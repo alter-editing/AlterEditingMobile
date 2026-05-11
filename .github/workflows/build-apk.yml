@@ -95,9 +95,18 @@ jobs:
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [[ -z "${ANDROID_KEYSTORE_BASE64}" ]]; then
-            echo "Missing ANDROID_KEYSTORE_BASE64. Add Android signing secrets before publishing releases."
+          if [[ -z "${ANDROID_KEYSTORE_BASE64}" || -z "${ANDROID_KEYSTORE_PASSWORD}" || -z "${ANDROID_KEY_ALIAS}" || -z "${ANDROID_KEY_PASSWORD}" ]]; then
+            echo "Missing Android signing secrets."
+            echo "Add these repository secrets before publishing releases:"
+            echo "ANDROID_KEYSTORE_BASE64"
+            echo "ANDROID_KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD"
+            echo "Use create-release-keystore.bat and README_ANDROID_SIGNING_SECRETS_RU.txt."
             exit 1
           fi
           echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release.keystore
