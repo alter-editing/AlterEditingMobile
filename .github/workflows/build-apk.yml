@@ -96,7 +96,6 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [[ -z "${ANDROID_KEYSTORE_BASE64}" || -z "${ANDROID_KEYSTORE_PASSWORD}" || -z "${ANDROID_KEY_ALIAS}" || -z "${ANDROID_KEY_PASSWORD}" ]]; then
@@ -112,10 +111,25 @@ jobs:
           echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release.keystore
           echo "ANDROID_KEYSTORE_PATH=${GITHUB_WORKSPACE}/android/app/release.keystore" >> "$GITHUB_ENV"
 
+          echo "Available aliases in release keystore:"
+          keytool -list -v -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD}" | grep -E "Alias name:" || true
+
+          if keytool -list -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD}" -alias "${ANDROID_KEY_ALIAS}" >/dev/null 2>&1; then
+            RESOLVED_ALIAS="${ANDROID_KEY_ALIAS}"
+            echo "Using requested Android key alias: ${RESOLVED_ALIAS}"
+          else
+            RESOLVED_ALIAS="$(keytool -list -v -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD}" | sed -n 's/^Alias name: //p' | head -n 1)"
+            if [[ -z "${RESOLVED_ALIAS}" ]]; then
+              echo "Could not detect any key alias inside release.keystore."
+              exit 1
+            fi
+            echo "Requested alias '${ANDROID_KEY_ALIAS}' was not found. Using detected alias: ${RESOLVED_ALIAS}"
+          fi
+          echo "ANDROID_KEY_ALIAS=${RESOLVED_ALIAS}" >> "$GITHUB_ENV"
+
       - name: Patch Android project
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: node scripts/patch-android.js
 
@@ -123,7 +137,6 @@ jobs:
         shell: bash
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
