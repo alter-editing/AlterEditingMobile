@@ -171,10 +171,17 @@ function versionCodeFromVersion(version, fallback) {
 function patchGradleVersionsAndSigning() {
   const gradlePath = path.join('android', 'app', 'build.gradle');
   if (!fs.existsSync(gradlePath)) return;
+
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const appVersion = String(process.env.APP_VERSION || pkg.version || '1.0.0').replace(/^v/i, '');
   const versionCode = versionCodeFromVersion(appVersion, process.env.GITHUB_RUN_NUMBER || 1);
   let gradle = fs.readFileSync(gradlePath, 'utf8');
+
+  // Some generated Capacitor/Gradle combinations can miss compileSdk in app/build.gradle.
+  // Add it inside android {} without touching the rest of the generated file.
+  if (!/\bcompileSdk(?:Version)?\b/.test(gradle)) {
+    gradle = gradle.replace(/android\s*\{/, 'android {\n    compileSdkVersion rootProject.ext.compileSdkVersion');
+  }
 
   if (/versionCode\s+\d+/.test(gradle)) gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
   else gradle = gradle.replace(/defaultConfig\s*\{/, `defaultConfig {\n        versionCode ${versionCode}`);
@@ -182,15 +189,26 @@ function patchGradleVersionsAndSigning() {
   if (/versionName\s+["'][^"']+["']/.test(gradle)) gradle = gradle.replace(/versionName\s+["'][^"']+["']/, `versionName "${appVersion}"`);
   else gradle = gradle.replace(/defaultConfig\s*\{/, `defaultConfig {\n        versionName "${appVersion}"`);
 
-  const signingRequested = Boolean(process.env.ANDROID_KEYSTORE_PATH || process.env.ANDROID_KEYSTORE_BASE64);
-  if (signingRequested && !gradle.includes('signingConfigs')) {
+  // Only enable release signing after the workflow has decoded the keystore file.
+  // Do not key this off ANDROID_KEYSTORE_BASE64, because that value is not visible
+  // to Gradle and should never be written into build.gradle.
+  const signingRequested = Boolean(process.env.ANDROID_KEYSTORE_PATH);
+
+  if (signingRequested && !/signingConfigs\s*\{/.test(gradle)) {
     gradle = gradle.replace(/android\s*\{/, `android {\n    signingConfigs {\n        release {\n            storeFile file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.keystore")\n            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: ""\n            keyAlias System.getenv("ANDROID_KEY_ALIAS") ?: ""\n            keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: ""\n        }\n    }`);
   }
+
   if (signingRequested) {
-    gradle = gradle.replace(/release\s*\{([\s\S]*?)\n\s*\}/, (m, body) => {
-      if (body.includes('signingConfig signingConfigs.release')) return m;
-      return m.replace(body, `${body}\n            signingConfig signingConfigs.release`);
-    });
+    // Add signingConfig only to buildTypes.release. The previous patch matched the
+    // first `release { ... }` block, which could be signingConfigs.release and breaks Gradle.
+    if (/buildTypes\s*\{[\s\S]*?release\s*\{/.test(gradle)) {
+      gradle = gradle.replace(/(buildTypes\s*\{[\s\S]*?release\s*\{)([\s\S]*?)(\n\s*\})/, (m, start, body, end) => {
+        if (body.includes('signingConfig signingConfigs.release')) return m;
+        return `${start}${body}\n            signingConfig signingConfigs.release${end}`;
+      });
+    } else {
+      gradle = gradle.replace(/android\s*\{/, `android {\n    buildTypes {\n        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false\n        }\n    }`);
+    }
   }
 
   fs.writeFileSync(gradlePath, gradle, 'utf8');
