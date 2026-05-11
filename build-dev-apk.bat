@@ -2,15 +2,15 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
+title AlterEditingMobile DEV Build
+
 echo ================================
-echo   BUILD DEV APK
+echo   ALTER EDITING MOBILE - DEV
 echo ================================
 echo.
 
-REM Go to folder where this .bat is located
 cd /d "%~dp0"
 
-REM Check repository
 git rev-parse --is-inside-work-tree >nul 2>nul
 if errorlevel 1 (
     echo [ERROR] This folder is not a Git repository.
@@ -19,80 +19,64 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Fetch remote branches
+REM Make sure remote info is fresh
 git fetch origin
 
-REM If local dev does not exist, create it
-git show-ref --verify --quiet refs/heads/dev
-if errorlevel 1 (
-    git show-ref --verify --quiet refs/remotes/origin/dev
-    if errorlevel 1 (
-        echo [INFO] Remote dev branch not found. Creating dev from main...
-        git checkout main
-        if errorlevel 1 (
-            echo [ERROR] Cannot switch to main to create dev.
-            pause
-            exit /b 1
-        )
-        git pull --ff-only origin main
-        git checkout -b dev
-        git push -u origin dev
-    ) else (
-        echo [INFO] Local dev branch not found. Creating from origin/dev...
-        git checkout -b dev origin/dev
-    )
-) else (
-    git checkout dev
-)
-
-if errorlevel 1 (
-    echo [ERROR] Cannot switch to dev.
+REM Create/switch to dev safely
+if not exist .git (
+    echo [ERROR] .git folder was not found.
     pause
     exit /b 1
 )
 
-REM Pull latest dev if remote exists
+git show-ref --verify --quiet refs/heads/dev
+if errorlevel 1 (
+    git show-ref --verify --quiet refs/remotes/origin/dev
+    if errorlevel 1 (
+        echo [INFO] dev does not exist. Creating dev from current main...
+        git checkout main
+        if errorlevel 1 goto fail
+        git pull --ff-only origin main
+        if errorlevel 1 goto fail
+        git checkout -b dev
+        if errorlevel 1 goto fail
+        git push -u origin dev
+        if errorlevel 1 goto fail
+    ) else (
+        echo [INFO] Creating local dev from origin/dev...
+        git checkout -b dev origin/dev
+        if errorlevel 1 goto fail
+    )
+) else (
+    git checkout dev
+    if errorlevel 1 goto fail
+)
+
+REM Pull dev only if remote dev exists
 git ls-remote --exit-code --heads origin dev >nul 2>nul
 if not errorlevel 1 (
     git pull --ff-only origin dev
-    if errorlevel 1 (
-        echo [WARNING] Could not fast-forward pull dev.
-        echo Fix conflicts manually if needed.
-        pause
-        exit /b 1
-    )
+    if errorlevel 1 goto fail
 )
 
 echo Current branch:
 git branch --show-current
 echo.
 
-REM Add all changes
-git add .
+git add -A
 
-REM Commit changes, or create empty commit to trigger GitHub Actions
 git diff --cached --quiet
 if errorlevel 1 (
     git commit -m "Dev build"
+    if errorlevel 1 goto fail
 ) else (
-    echo No file changes detected. Creating empty dev build commit...
+    echo No file changes detected. Creating empty commit to trigger Actions...
     git commit --allow-empty -m "Trigger dev build"
+    if errorlevel 1 goto fail
 )
 
-if errorlevel 1 (
-    echo [ERROR] Commit failed.
-    pause
-    exit /b 1
-)
-
-REM Push only dev
 git push origin dev
-
-if errorlevel 1 (
-    echo [ERROR] Push to dev failed.
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto fail
 
 echo.
 echo ================================
@@ -101,3 +85,10 @@ echo Check GitHub Actions. Branch: dev
 echo This does NOT create a GitHub Release.
 echo ================================
 pause
+exit /b 0
+
+:fail
+echo.
+echo [ERROR] DEV build failed. Check message above.
+pause
+exit /b 1
