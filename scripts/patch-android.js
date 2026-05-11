@@ -704,16 +704,16 @@ public class TikTokWebActivity extends Activity {
             settings.setSafeBrowsingEnabled(true);
         }
         webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
-        // Keep the desktop TikTok web version, but do not shrink the whole desktop page
-        // into a tiny phone-width overview. This makes the logged-in TikTok Studio
-        // area fill the available WebView space instead of looking compressed.
-        settings.setLoadWithOverviewMode(false);
+        // TikTok Studio is a desktop web app. Keep a real desktop viewport instead of
+        // forcing width=device-width. Forcing mobile-width after upload can make the
+        // editor calculate a broken tall canvas and hide the bottom action buttons.
+        settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setTextZoom(100);
         settings.setUserAgentString(DESKTOP_USER_AGENT);
-        webView.setInitialScale(115);
+        webView.setInitialScale(70);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
@@ -724,12 +724,32 @@ public class TikTokWebActivity extends Activity {
                 super.onPageFinished(view, url);
                 if (url != null && url.toLowerCase().contains("tiktok.com")) {
                     view.evaluateJavascript("(function(){" +
+                        "try{" +
+                        "var W=1280;" +
                         "var m=document.querySelector('meta[name=viewport]');" +
                         "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
-                        "m.content='width=device-width, initial-scale=1, maximum-scale=3, user-scalable=yes';" +
-                        "document.documentElement.style.minWidth='0';" +
-                        "document.body.style.minWidth='0';" +
+                        "m.content='width='+W+', initial-scale=1, maximum-scale=4, minimum-scale=0.25, user-scalable=yes';" +
+                        "document.documentElement.style.minWidth=W+'px';" +
+                        "document.documentElement.style.width=W+'px';" +
+                        "document.documentElement.style.height='auto';" +
+                        "document.documentElement.style.overflowX='auto';" +
+                        "document.documentElement.style.overflowY='auto';" +
+                        "document.body.style.minWidth=W+'px';" +
+                        "document.body.style.width=W+'px';" +
+                        "document.body.style.height='auto';" +
+                        "document.body.style.minHeight='100vh';" +
                         "document.body.style.overflowX='auto';" +
+                        "document.body.style.overflowY='auto';" +
+                        "var st=document.getElementById('alter-tiktok-desktop-fix');" +
+                        "if(!st){st=document.createElement('style');st.id='alter-tiktok-desktop-fix';document.head.appendChild(st);}" +
+                        "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:128px!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "if(!window.__alterTikTokActionFix){window.__alterTikTokActionFix=1;" +
+                        "var texts=['опубликовать','публикация','запланировать','сохранить','черновик','publish','post','schedule','save','draft'];" +
+                        "function txt(e){return ((e&&e.innerText)||'').replace(/\\s+/g,' ').trim().toLowerCase();}" +
+                        "function hasAction(e){var t=txt(e);for(var i=0;i<texts.length;i++){if(t.indexOf(texts[i])>=0)return true;}return false;}" +
+                        "function fixActions(){try{var all=[].slice.call(document.querySelectorAll('button,[role=button],a'));var b=all.filter(hasAction);if(!b.length)return;var bar=b[0];for(var d=0;d<8&&bar&&bar.parentElement;d++){var p=bar.parentElement;var bc=p.querySelectorAll('button,[role=button]').length;var w=p.getBoundingClientRect().width;if(bc>=2||w>520){bar=p;break;}bar=p;}if(!bar)return;bar.setAttribute('data-alter-fixed-actions','1');bar.style.position='fixed';bar.style.left='64px';bar.style.right='18px';bar.style.bottom='calc(env(safe-area-inset-bottom,0px) + 10px)';bar.style.zIndex='2147483647';bar.style.background='rgba(255,255,255,.96)';bar.style.border='1px solid rgba(0,0,0,.10)';bar.style.borderRadius='14px';bar.style.boxShadow='0 8px 28px rgba(0,0,0,.18)';bar.style.padding='10px 12px';bar.style.maxHeight='92px';bar.style.overflow='visible';bar.style.transform='none';bar.style.visibility='visible';bar.style.opacity='1';}catch(e){}}" +
+                        "setInterval(fixActions,900);setTimeout(fixActions,1200);setTimeout(fixActions,3200);}" +
+                        "}catch(e){}" +
                         "})()", null);
                 }
             }
