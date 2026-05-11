@@ -7,10 +7,8 @@ echo   BUILD DEV APK
 echo ================================
 echo.
 
-REM Переходим в папку, где лежит сам bat
 cd /d "%~dp0"
 
-REM Проверяем git
 git status >nul 2>nul
 if errorlevel 1 (
     echo [ERROR] This folder is not a git repository.
@@ -18,7 +16,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Переключаемся на dev
 git checkout dev
 if errorlevel 1 (
     echo [ERROR] Cannot switch to dev branch.
@@ -29,23 +26,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Показываем текущую ветку
 echo Current branch:
 git branch --show-current
 echo.
 
-REM Добавляем изменения
 git add .
 
-REM Коммитим, если есть изменения
 git diff --cached --quiet
 if errorlevel 1 (
     git commit -m "Dev build"
 ) else (
-    echo No changes to commit.
+    echo No changes detected. Creating empty dev build commit...
+    git commit --allow-empty -m "Trigger dev build"
 )
 
-REM Пушим именно dev
 git push origin dev
 
 echo.
