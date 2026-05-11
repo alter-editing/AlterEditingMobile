@@ -7,17 +7,15 @@ on:
       - dev
     tags:
       - "v*"
-  workflow_dispatch:
-    tags:
-      - 'v*'
+
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version for APK/release, for example 1.0.1'
+        description: "Version for APK/release, for example 1.0.1"
         required: false
-        default: ''
+        default: ""
       publish_release:
-        description: 'Publish GitHub Release'
+        description: "Publish GitHub Release"
         required: true
         default: false
         type: boolean
@@ -25,14 +23,14 @@ on:
 permissions:
   contents: write
 
+env:
+  UPDATE_REPO: ${{ github.repository }}
+  IS_TAG_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  MANUAL_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release == true }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    env:
-      UPDATE_REPO: ${{ github.repository }}
-      IS_TAG_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      MANUAL_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release == true }}
 
     steps:
       - name: Checkout
@@ -50,6 +48,7 @@ jobs:
           else
             VERSION="$(node -p "require('./package.json').version")"
           fi
+
           VERSION_CODE="${GITHUB_RUN_NUMBER}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
@@ -65,8 +64,8 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: temurin
+          java-version: 21
 
       - name: Enable pnpm
         shell: bash
@@ -89,61 +88,60 @@ jobs:
           pnpm exec vite build
 
       - name: Add Android
+        shell: bash
         run: pnpm exec cap add android || true
 
       - name: Sync
+        shell: bash
         run: pnpm exec cap sync android
 
       - name: Decode Android signing key
         if: ${{ env.IS_TAG_RELEASE == 'true' || env.MANUAL_RELEASE == 'true' }}
         shell: bash
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64_SECRET: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS_SECRET: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [[ -z "${ANDROID_KEYSTORE_BASE64}" || -z "${ANDROID_KEYSTORE_PASSWORD}" || -z "${ANDROID_KEY_ALIAS}" || -z "${ANDROID_KEY_PASSWORD}" ]]; then
+          if [[ -z "${ANDROID_KEYSTORE_BASE64_SECRET}" || -z "${ANDROID_KEYSTORE_PASSWORD_SECRET}" || -z "${ANDROID_KEY_ALIAS_SECRET}" || -z "${ANDROID_KEY_PASSWORD_SECRET}" ]]; then
             echo "Missing Android signing secrets."
             echo "Add these repository secrets before publishing releases:"
             echo "ANDROID_KEYSTORE_BASE64"
             echo "ANDROID_KEYSTORE_PASSWORD"
             echo "ANDROID_KEY_ALIAS"
             echo "ANDROID_KEY_PASSWORD"
-            echo "Use create-release-keystore.bat and README_ANDROID_SIGNING_SECRETS_RU.txt."
             exit 1
           fi
-          echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release.keystore
+
+          echo "${ANDROID_KEYSTORE_BASE64_SECRET}" | base64 --decode > android/app/release.keystore
           echo "ANDROID_KEYSTORE_PATH=${GITHUB_WORKSPACE}/android/app/release.keystore" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD_SECRET}" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD_SECRET}" >> "$GITHUB_ENV"
 
           echo "Available aliases in release keystore:"
-          keytool -list -v -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD}" | grep -E "Alias name:" || true
+          keytool -list -v -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD_SECRET}" | grep -E "Alias name:" || true
 
-          if keytool -list -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD}" -alias "${ANDROID_KEY_ALIAS}" >/dev/null 2>&1; then
-            RESOLVED_ALIAS="${ANDROID_KEY_ALIAS}"
+          if keytool -list -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD_SECRET}" -alias "${ANDROID_KEY_ALIAS_SECRET}" >/dev/null 2>&1; then
+            RESOLVED_ALIAS="${ANDROID_KEY_ALIAS_SECRET}"
             echo "Using requested Android key alias: ${RESOLVED_ALIAS}"
           else
-            RESOLVED_ALIAS="$(keytool -list -v -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD}" | sed -n 's/^Alias name: //p' | head -n 1)"
+            RESOLVED_ALIAS="$(keytool -list -v -keystore android/app/release.keystore -storepass "${ANDROID_KEYSTORE_PASSWORD_SECRET}" | sed -n 's/^Alias name: //p' | head -n 1)"
             if [[ -z "${RESOLVED_ALIAS}" ]]; then
               echo "Could not detect any key alias inside release.keystore."
               exit 1
             fi
-            echo "Requested alias '${ANDROID_KEY_ALIAS}' was not found. Using detected alias: ${RESOLVED_ALIAS}"
+            echo "Requested alias was not found. Using detected alias: ${RESOLVED_ALIAS}"
           fi
+
           echo "ANDROID_KEY_ALIAS=${RESOLVED_ALIAS}" >> "$GITHUB_ENV"
 
       - name: Patch Android project
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
         run: node scripts/patch-android.js
 
       - name: Build APK
         shell: bash
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
@@ -159,17 +157,21 @@ jobs:
         run: |
           mkdir -p release-out
           VERSION="${{ steps.version.outputs.version }}"
+
           if [[ "${IS_TAG_RELEASE}" == "true" || "${MANUAL_RELEASE}" == "true" ]]; then
             APK_PATH="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           else
             APK_PATH="$(find android/app/build/outputs/apk/debug -name '*.apk' | head -n 1)"
           fi
+
           if [[ -z "${APK_PATH}" ]]; then
             echo "APK not found"
             exit 1
           fi
+
           OUT_APK="release-out/AlterEditingMethod-Mobile-${VERSION}.apk"
           cp "${APK_PATH}" "${OUT_APK}"
+
           cat > release-out/latest-android.json <<JSON
           {
             "version": "${VERSION}",
@@ -178,6 +180,7 @@ jobs:
             "repo": "${GITHUB_REPOSITORY}"
           }
           JSON
+
           echo "apk=${OUT_APK}" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK artifact
