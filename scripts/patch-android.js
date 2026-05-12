@@ -662,15 +662,31 @@ public class WebBridge {
 
     @JavascriptInterface
     public String openTikTokUpload(String url) {
+        String target = (url == null || url.trim().isEmpty()) ? "https://www.tiktok.com/upload" : url.trim();
+
+        // Force Microsoft Edge first. This prevents Android from resolving tiktok.com links
+        // directly into the TikTok mobile app through App Links / Deep Links.
         try {
-            String target = (url == null || url.trim().isEmpty()) ? "https://www.tiktok.com/upload" : url.trim();
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
-            intent.addCategory(Intent.CATEGORY_BROWSABLE);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(intent);
-            return "OK_BROWSER";
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
+            Intent edgeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+            edgeIntent.setPackage("com.microsoft.emmx");
+            edgeIntent.addCategory(Intent.CATEGORY_BROWSABLE);
+            edgeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(edgeIntent);
+            return "OK_EDGE";
+        } catch (Exception edgeError) {
+            // Fallback: open the system chooser instead of silently sending the link to TikTok.
+            try {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+                browserIntent.addCategory(Intent.CATEGORY_BROWSABLE);
+                browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                Intent chooser = Intent.createChooser(browserIntent, "Open TikTok Upload in browser");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(chooser);
+                return "OK_CHOOSER";
+            } catch (Exception fallbackError) {
+                return "ERROR_EDGE:" + edgeError.getMessage() + "; FALLBACK:" + fallbackError.getMessage();
+            }
         }
     }
 }
