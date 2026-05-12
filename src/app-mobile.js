@@ -37,11 +37,9 @@ function resetAuthButtonState(){
     btn.disabled = false;
     btn.removeAttribute('disabled');
     btn.removeAttribute('aria-disabled');
-    btn.classList.remove('is-loading','is-disabled','disabled','loading');
+    btn.classList.remove('is-disabled','disabled');
     btn.style.pointerEvents = 'auto';
-    btn.style.opacity = '';
     btn.style.touchAction = 'manipulation';
-    btn.style.webkitTapHighlightColor = 'transparent';
   }
   const overlay = $('authOverlay');
   if(overlay){
@@ -451,13 +449,13 @@ async function init(){
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
   if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
   setTimeout(()=>checkAppUpdateSoon({force:true}), 1800);
-  setInterval(resetAuthButtonState, 2500);
 }
 
 
 function hardAuthTapHandler(event){
   try{
-    event?.preventDefault?.();
+    // Keep default button visual feedback/animations alive.
+    // Only stop bubbling so overlay layers do not steal the tap.
     event?.stopPropagation?.();
   }catch(_){}
   resetAuthButtonState();
