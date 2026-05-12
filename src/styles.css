@@ -1118,3 +1118,57 @@ body[data-theme='light'] .desktop-upload-step-image{border-color:rgba(18,26,36,.
   object-fit:contain!important;
   background:rgba(0,0,0,.32)!important;
 }
+
+
+/* === FIX: Telegram auth button tap reliability without breaking animations === */
+.auth-overlay{
+  pointer-events:auto!important;
+  z-index:999!important;
+}
+.auth-card{
+  pointer-events:auto!important;
+}
+#authButton{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+  position:relative!important;
+  z-index:1001!important;
+}
+#authButton:disabled{
+  pointer-events:auto!important;
+}
+
+
+/* === RESTORE: Telegram auth button forced tap animation === */
+#authButton.auth-button-tap-anim{
+  animation:authButtonTapPop .38s cubic-bezier(.2,.9,.2,1) both!important;
+}
+@keyframes authButtonTapPop{
+  0%{
+    transform:translate3d(0,0,0) scale(1);
+    filter:brightness(1);
+  }
+  35%{
+    transform:translate3d(0,1px,0) scale(.965);
+    filter:brightness(1.18);
+  }
+  70%{
+    transform:translate3d(0,-1px,0) scale(1.025);
+    filter:brightness(1.08);
+  }
+  100%{
+    transform:translate3d(0,0,0) scale(1);
+    filter:brightness(1);
+  }
+}
+#authButton:active{
+  transform:translate3d(0,1px,0) scale(.97);
+  filter:brightness(1.15);
+}
+
+
+#authButton{
+  transition:transform .16s ease, filter .16s ease, box-shadow .16s ease, opacity .16s ease!important;
+  will-change:transform,filter!important;
+}

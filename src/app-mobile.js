@@ -1,9 +1,9 @@
 const $ = id => document.getElementById(id);
 
 const i18n = {
-  en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Drag a file here or tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'This video format is not supported. Please convert the video to MP4/MOV format and try again.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Microsoft Edge will open. Follow the screenshot below: tap the menu button, then choose “Go to full site”.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Edge',desktopUploadCancel:'Cancel'},
-  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Этот формат видео не поддерживается. Пожалуйста, перекодируйте видео в mp4/mov формат и повторите попытку.',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Microsoft Edge. Следуйте скриншоту ниже: нажмите меню, затем выберите полную версию сайта.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Edge',desktopUploadCancel:'Отмена'},
-  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Bu video formatı desteklenmiyor. Lütfen videoyu MP4/MOV formatına dönüştürüp tekrar deneyin.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Microsoft Edge açılacak. Aşağıdaki ekran görüntüsünü takip edin: menüye dokunun, ardından tam site seçeneğini seçin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Edge’i aç',desktopUploadCancel:'İptal'}
+  en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Drag a file here or tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'This video format is not supported. Please convert the video to MP4/MOV format and try again.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Brave will open. If Brave is not installed, Google Play will open so you can install it. Follow the screenshot below after opening Brave.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Brave',desktopUploadCancel:'Cancel'},
+  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Этот формат видео не поддерживается. Пожалуйста, перекодируйте видео в mp4/mov формат и повторите попытку.',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
+  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Bu video formatı desteklenmiyor. Lütfen videoyu MP4/MOV formatına dönüştürüp tekrar deneyin.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
 };
 
 const state = { settings:null, file:null, fileUrl:'', working:false, logs:[], filePickerActive:false, externalAuthActive:false };
@@ -20,14 +20,43 @@ const VISUAL_RUNTIME = {
   particlesStart: null,
   particlesStop: null
 };
-const AUTH_POLL_MAX_MS = 12 * 60 * 1000;
-const AUTH_POLL_INTERVAL_MS = 1800;
+const AUTH_POLL_MAX_MS = 90 * 1000;
+const AUTH_POLL_INTERVAL_MS = 2500;
 let authPollActive = false;
+let authClickLockedUntil = 0;
+let authTapInProgress = false;
 let lastLifecycleResumeAt = 0;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
 let fileInput;
 
 function t(k){return (i18n[state.settings?.language || 'en'] || i18n.en)[k] || i18n.en[k] || k;}
+
+
+function playAuthButtonAnimation(){
+  const btn = $('authButton');
+  if(!btn) return;
+  btn.classList.remove('auth-button-tap-anim');
+  void btn.offsetWidth;
+  btn.classList.add('auth-button-tap-anim');
+  setTimeout(()=>btn.classList.remove('auth-button-tap-anim'), 420);
+}
+
+function resetAuthButtonState(){
+  const btn = $('authButton');
+  if(btn){
+    btn.disabled = false;
+    btn.removeAttribute('disabled');
+    btn.removeAttribute('aria-disabled');
+    btn.classList.remove('is-disabled','disabled');
+    btn.style.pointerEvents = 'auto';
+    btn.style.touchAction = 'manipulation';
+  }
+  const overlay = $('authOverlay');
+  if(overlay){
+    overlay.style.pointerEvents = '';
+  }
+}
+
 
 const DESKTOP_UPLOAD_IMAGES = {
   en:{
@@ -351,6 +380,7 @@ async function resumeAppState(){
   }
 }
 function bindLifecycleResume(){
+  clearStaleAuthProgress();
   window.alterE?.app?.onStateChange?.(active=>{
     setVisualPaused(!active);
     if(active) resumeAppState();
@@ -431,7 +461,31 @@ async function init(){
   setTimeout(()=>checkAppUpdateSoon({force:true}), 1800);
 }
 
+
+function hardAuthTapHandler(event){
+  try{
+    event?.stopPropagation?.();
+  }catch(_){}
+  playAuthButtonAnimation();
+  resetAuthButtonState();
+  authorize();
+}
+
+
+function bindAuthOverlaySafety(){
+  const overlay = $('authOverlay');
+  const btn = $('authButton');
+  if(!overlay || !btn) return;
+  overlay.addEventListener('touchend', e=>{
+    if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
+  }, {passive:false});
+  overlay.addEventListener('pointerup', e=>{
+    if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
+  }, {passive:false});
+}
+
 function bind(){
+  bindAuthOverlaySafety();
   $('dropZone')?.addEventListener('click',openVideoPicker);
   $('dropZone')?.addEventListener('dragover',e=>{e.preventDefault();$('dropZone').classList.add('is-dragover')});
   $('dropZone')?.addEventListener('dragleave',()=>$('dropZone').classList.remove('is-dragover'));
@@ -449,7 +503,16 @@ function bind(){
   $('themeButton')?.addEventListener('click',switchTheme);
   $('performanceButton')?.addEventListener('click',cyclePerformanceMode);
   $('logoutButton')?.addEventListener('click',async()=>{state.settings=await window.alterE.settings.update({authorized:false,authToken:''});renderAuth()});
-  $('authButton')?.addEventListener('click',authorize);
+  {
+    const authBtn = $('authButton');
+    if(authBtn){
+      authBtn.addEventListener('touchstart', ()=>playAuthButtonAnimation(), {passive:true});
+      authBtn.addEventListener('pointerdown', ()=>playAuthButtonAnimation(), {passive:true});
+      authBtn.addEventListener('click', hardAuthTapHandler, {passive:false});
+      authBtn.addEventListener('touchend', hardAuthTapHandler, {passive:false});
+      authBtn.addEventListener('pointerup', hardAuthTapHandler, {passive:false});
+    }
+  }
   $('howToUseButton')?.addEventListener('click',()=>openTutorial(true));
   $('tutorialCloseButton')?.addEventListener('click',()=>openTutorial(false));
   $('tutorialDoneButton')?.addEventListener('click',()=>openTutorial(false));
@@ -579,6 +642,22 @@ function applyText(){
   renderLogs();
 }
 
+
+async function clearStaleAuthProgress(){
+  const started = Number(state.settings?.authStartedAt || 0);
+  const pending = state.settings?.pendingAuthToken || '';
+  if(!pending && !state.settings?.authInProgress) { resetAuthButtonState(); return; }
+  if(!started || Date.now() - started > 90 * 1000){
+    state.settings = await window.alterE.settings.update({
+      authInProgress:false,
+      pendingAuthToken:'',
+      authStartedAt:0
+    }).catch(()=>state.settings);
+    saveUiSnapshotSoon?.();
+  }
+  resetAuthButtonState();
+}
+
 async function validateStoredAuthorization(){
   const token=state.settings?.authToken||'';
   if(!state.settings?.authorized||!token)return;
@@ -589,7 +668,8 @@ async function validateStoredAuthorization(){
   }
 }
 
-function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);}
+function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);resetAuthButtonState();}
+
 function resetPreviewElement(v){
   if(!v)return;
   try{v.pause?.();}catch(_){}
@@ -717,28 +797,49 @@ async function patch(){
   }
 }
 async function authorize(){
-  const b=$('authButton');
+  const stamp = Date.now();
+  if(authTapInProgress && stamp < authClickLockedUntil) return;
+  authTapInProgress = true;
+  authClickLockedUntil = stamp + 1600;
+  resetAuthButtonState();
+
   try{
-    if(b) b.disabled=true;
-    $('authText').textContent=t('authChecking');
-    const s=await window.alterE.auth.createSession();
-    const token=s?.session_token||s?.sessionToken||s?.session_id||s?.sessionId||s?.token||s?.id||'';
-    if(!token)throw new Error('auth_token_missing');
-    const url=s?.auth_url||s?.authUrl||s?.telegram_url||s?.telegramUrl||`https://t.me/AlterEditing_bot?start=auth_${encodeURIComponent(token)}`;
-    await savePendingAuth(token,url);
-    $('authText').textContent=t('authWaiting');
-    markExternalTransition('auth',true);
-    await window.alterE.shell.openExternal(url);
-    const ok=await pollAuthorization(token);
-    if(!ok && !state.settings?.authorized){
-      $('authText').textContent=t('authWaiting');
-    }
+    toast(t('authChecking'), '');
+
+    // Always create a fresh Telegram auth session on manual tap.
+    // This prevents a stale pending session from blocking the button.
+    const session = await window.alterE.auth.createSession();
+    const token = session?.session_token || session?.token || '';
+    const telegramUrl = session?.auth_url || session?.telegram_url || session?.url || '';
+
+    if(!token || !telegramUrl) throw new Error('auth_session_not_created');
+
+    state.settings = await window.alterE.settings.update({
+      authorized:false,
+      authToken:'',
+      pendingAuthToken:token,
+      authInProgress:true,
+      authStartedAt:Date.now()
+    });
+
+    saveUiSnapshotSoon?.();
+    markExternalTransition('external', true);
+    await window.alterE.shell.openExternal(telegramUrl);
+    setTimeout(()=>markExternalTransition('external', false), 900);
+
+    toast(t('authWaiting'), '');
+    pollAuthorization(token, {silent:true});
   }catch(e){
-    const m=String(e?.message||t('authFailed'));
-    $('authText').textContent=m;
-    log('error','authFailed','');
+    resetAuthButtonState();
+    state.settings = await window.alterE.settings.update({
+      authInProgress:false,
+      pendingAuthToken:'',
+      authStartedAt:0
+    }).catch(()=>state.settings);
+    saveUiSnapshotSoon?.();
+    toast(t('authFailed'), String(e?.message || e || ''));
   }finally{
-    if(b && !authPollActive) b.disabled=false;
+    setTimeout(()=>{ authTapInProgress = false; resetAuthButtonState(); }, 500);
   }
 }
 async function switchLanguage(){const o=['en','ru','tr'];const n=o[(o.indexOf(state.settings.language)+1)%o.length];state.settings=await window.alterE.settings.update({language:n});applyText()}

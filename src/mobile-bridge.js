@@ -682,10 +682,10 @@ window.alterE = {
       try {
         if (window.AlterWeb && typeof window.AlterWeb.openTikTokUpload === 'function') {
           const result = String(window.AlterWeb.openTikTokUpload(target) || '');
-          if (!result.startsWith('ERROR:')) return true;
+          if (!result.startsWith('ERROR')) return true;
         }
       } catch (_) {}
-      return Browser.open({ url: target });
+      return Browser.open({ url: 'https://play.google.com/store/apps/details?id=com.brave.browser' });
     },
     showItem: async () => {}
   },
