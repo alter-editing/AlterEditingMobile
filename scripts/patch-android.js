@@ -668,7 +668,7 @@ public class WebBridge {
         // directly into the TikTok mobile app through App Links / Deep Links.
         try {
             Intent edgeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
-            edgeIntent.setPackage("com.microsoft.emmx");
+            edgeIntent.setPackage("com.brave.browser");
             edgeIntent.addCategory(Intent.CATEGORY_BROWSABLE);
             edgeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(edgeIntent);
