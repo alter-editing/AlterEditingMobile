@@ -418,7 +418,6 @@ public class MediaPermissionBridge {
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.ActivityNotFoundException;
 import android.os.Build;
 import android.webkit.JavascriptInterface;
 
@@ -470,7 +469,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ActivityNotFoundException;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
@@ -624,7 +622,6 @@ public class PerformanceBridge {
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.ActivityNotFoundException;
 import android.webkit.JavascriptInterface;
 
 public class WebBridge {
@@ -652,7 +649,6 @@ public class WebBridge {
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -667,11 +663,11 @@ import android.webkit.WebViewClient;
 import android.view.Window;
 import android.view.WindowManager;
 import android.graphics.Color;
-import android.widget.Toast;
 
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
     private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+    private static final String MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
 
@@ -724,6 +720,12 @@ public class TikTokWebActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                applyUserAgentForUrl(url);
+            }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -811,58 +813,52 @@ public class TikTokWebActivity extends Activity {
         if (url == null || url.trim().isEmpty()) {
             url = "https://www.tiktok.com/tiktokstudio/upload";
         }
-        webView.loadUrl(forceDesktopTikTokUrl(url));
+        String startUrl = forceDesktopTikTokUrl(url);
+        applyUserAgentForUrl(startUrl);
+        webView.loadUrl(startUrl);
+    }
+
+    private boolean isTikTokStudioUploadUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+        return (lower.contains("tiktokstudio") || lower.contains("/creator-center/upload") || lower.contains("/upload"))
+            && !lower.contains("/login")
+            && !lower.contains("accounts.google")
+            && !lower.contains("oauth");
+    }
+
+    private void applyUserAgentForUrl(String url) {
+        if (webView == null) return;
+        try {
+            WebSettings s = webView.getSettings();
+            if (isTikTokStudioUploadUrl(url)) {
+                s.setUserAgentString(DESKTOP_USER_AGENT);
+                webView.setInitialScale(70);
+                webView.setBackgroundColor(Color.WHITE);
+            } else {
+                s.setUserAgentString(MOBILE_USER_AGENT);
+                webView.setInitialScale(100);
+                webView.setBackgroundColor(Color.BLACK);
+            }
+        } catch (Exception ignored) {}
     }
 
     private boolean handleUrl(WebView view, String url) {
         if (url == null) return false;
         String lower = url.toLowerCase();
-        if (isGoogleAuthUrl(url)) {
-            openExternalBrowser(url);
-            return true;
-        }
         if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
             return true;
         }
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             String forced = forceDesktopTikTokUrl(url);
             if (!forced.equals(url)) {
+                applyUserAgentForUrl(forced);
                 view.loadUrl(forced);
                 return true;
             }
             return false;
         }
         return true;
-    }
-
-    private boolean isGoogleAuthUrl(String url) {
-        if (url == null) return false;
-        try {
-            Uri uri = Uri.parse(url);
-            String host = uri.getHost();
-            if (host == null) return false;
-            String h = host.toLowerCase();
-            String u = url.toLowerCase();
-            return h.equals("accounts.google.com")
-                || h.endsWith(".accounts.google.com")
-                || (h.endsWith("google.com") && (u.contains("/signin/") || u.contains("/o/oauth") || u.contains("oauth2") || u.contains("/accounts/")));
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    private void openExternalBrowser(String url) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addCategory(Intent.CATEGORY_BROWSABLE);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            Toast.makeText(this, "Google вход открыт во внешнем браузере", Toast.LENGTH_SHORT).show();
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "Не найден браузер для Google входа", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "Не удалось открыть Google вход", Toast.LENGTH_LONG).show();
-        }
     }
 
     private String forceDesktopTikTokUrl(String url) {
