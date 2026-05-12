@@ -663,29 +663,36 @@ public class WebBridge {
     @JavascriptInterface
     public String openTikTokUpload(String url) {
         String target = (url == null || url.trim().isEmpty()) ? "https://www.tiktok.com/upload/?lang=en" : url.trim();
+        String bravePackage = "com.brave.browser";
 
-        // Force Microsoft Edge first. This prevents Android from resolving tiktok.com links
-        // directly into the TikTok mobile app through App Links / Deep Links.
+        // Open TikTok Upload only in Brave. Do not fall back to другие браузеры,
+        // Chrome, chooser, or the TikTok app. If Brave is missing, open Google Play.
         try {
-            Intent edgeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
-            edgeIntent.setPackage("com.brave.browser");
-            edgeIntent.addCategory(Intent.CATEGORY_BROWSABLE);
-            edgeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(edgeIntent);
-            return "OK_EDGE";
-        } catch (Exception edgeError) {
-            // Fallback: open the system chooser instead of silently sending the link to TikTok.
+            Intent braveIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+            braveIntent.setPackage(bravePackage);
+            braveIntent.addCategory(Intent.CATEGORY_BROWSABLE);
+            braveIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(braveIntent);
+            return "OK_BRAVE";
+        } catch (Exception braveError) {
             try {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
-                browserIntent.addCategory(Intent.CATEGORY_BROWSABLE);
-                browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-                Intent chooser = Intent.createChooser(browserIntent, "Open TikTok Upload in browser");
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                activity.startActivity(chooser);
-                return "OK_CHOOSER";
-            } catch (Exception fallbackError) {
-                return "ERROR_EDGE:" + edgeError.getMessage() + "; FALLBACK:" + fallbackError.getMessage();
+                Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + bravePackage));
+                marketIntent.setPackage("com.brave.browser");
+                marketIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(marketIntent);
+                return "OK_BRAVE_MARKET";
+            } catch (Exception marketError) {
+                try {
+                    Intent webMarketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + bravePackage));
+                    webMarketIntent.addCategory(Intent.CATEGORY_BROWSABLE);
+                    webMarketIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    activity.startActivity(webMarketIntent);
+                    return "OK_BRAVE_MARKET_WEB";
+                } catch (Exception webMarketError) {
+                    return "ERROR_BRAVE:" + braveError.getMessage()
+                        + "; MARKET:" + marketError.getMessage()
+                        + "; WEB_MARKET:" + webMarketError.getMessage();
+                }
             }
         }
     }
@@ -1252,3 +1259,54 @@ public class GalleryBridge {
 }
 
 console.log('Android cleartext/network config patched.');
+
+
+
+// === HARD FIX: Brave required for TikTok Upload, no Edge fallback ===
+(function forceBraveOnlyForTikTokUpload(){
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const root = process.cwd();
+    const androidRoot = path.join(root, 'android');
+    if (!fs.existsSync(androidRoot)) return;
+
+    const files = [];
+    function walk(dir){
+      for (const name of fs.readdirSync(dir)){
+        const full = path.join(dir, name);
+        const st = fs.statSync(full);
+        if (st.isDirectory()) walk(full);
+        else if (/\.(java|kt|xml|json|gradle|js|ts)$/i.test(name)) files.push(full);
+      }
+    }
+    walk(androidRoot);
+
+    const blockedPackages = [
+      'com.microsoft.emmx',
+      'com.android.chrome',
+      'com.chrome.beta',
+      'com.chrome.dev',
+      'org.mozilla.firefox',
+      'com.opera.browser',
+      'com.brave.browser_beta',
+      'com.brave.browser_nightly'
+    ];
+
+    for (const file of files){
+      let text = fs.readFileSync(file, 'utf8');
+      let next = text;
+      for (const pkg of blockedPackages){
+        next = next.split(pkg).join('com.brave.browser');
+      }
+      next = next.replace(/setPackage\(".*?"\)/g, 'setPackage("com.brave.browser")');
+      next = next.replace(/market:\/\/details\?id=[A-Za-z0-9_.]+/g, 'market://details?id=com.brave.browser');
+      next = next.replace(/https:\/\/play\.google\.com\/store\/apps\/details\?id=[A-Za-z0-9_.]+/g, 'https://play.google.com/store/apps/details?id=com.brave.browser');
+      if (next !== text) fs.writeFileSync(file, next, 'utf8');
+    }
+
+    console.log('[OK] TikTok Upload is forced to Brave only. No Edge fallback.');
+  } catch (e) {
+    console.warn('[WARN] Brave-only post patch skipped:', e && e.message ? e.message : e);
+  }
+})();
