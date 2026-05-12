@@ -738,15 +738,22 @@ public class TikTokWebActivity extends Activity {
                         "document.body.style.minWidth=W+'px';document.body.style.width=W+'px';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='auto';document.body.style.overflowY='auto';document.body.style.background=bg;document.body.style.paddingBottom='24px';" +
                         "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:24px!important;}body>div,#__next,#app,[id*=root],[class*=layout],[class*=container]{background:#fff!important;}*{-webkit-text-size-adjust:100%!important;}';" +
                         "function txt(e){return ((e&&e.innerText)||'').replace(/\s+/g,' ').trim().toLowerCase();}" +
-                        "function white(e){try{if(!e)return;e.style.setProperty('background','#fff','important');e.style.setProperty('background-color','#fff','important');}catch(x){}}" +
-                        "function fixUploadBg(){try{" +
-                        "white(document.documentElement);white(document.body);[document.querySelector('#root'),document.querySelector('#app'),document.querySelector('#__next'),document.body.firstElementChild].forEach(white);" +
-                        "var keys=['выберите видео для загрузки','выбрать видео','select video','choose video','drag'];" +
-                        "var nodes=[].slice.call(document.querySelectorAll('main,section,article,div'));" +
-                        "nodes.forEach(function(n){try{var t=txt(n);var hit=false;for(var i=0;i<keys.length;i++){if(t.indexOf(keys[i])>=0){hit=true;break;}}if(!hit)return;white(n);var p=n.parentElement;for(var j=0;j<8&&p;j++){white(p);p=p.parentElement;}}catch(x){}});" +
+                        "function css(e,k,v){try{if(e)e.style.setProperty(k,v,'important');}catch(x){}}" +
+                        "function fixUploadChooserCard(){try{" +
+                        "var paneBg='#f3f3f3';" +
+                        "css(document.documentElement,'background','#fff');css(document.body,'background','#fff');" +
+                        "var keys=['выберите видео для загрузки','select video','choose video'];" +
+                        "var nodes=[].slice.call(document.querySelectorAll('div,section,article'));" +
+                        "nodes.forEach(function(n){try{" +
+                        "var t=txt(n);var hit=false;for(var i=0;i<keys.length;i++){if(t.indexOf(keys[i])>=0){hit=true;break;}}if(!hit)return;" +
+                        "var r=n.getBoundingClientRect();if(!r||r.width<120||r.height<60||r.width>700||r.height>420)return;" +
+                        "css(n,'background',paneBg);css(n,'background-color',paneBg);css(n,'box-shadow','none');css(n,'border','0');css(n,'outline','0');" +
+                        "var ch=[].slice.call(n.children||[]);ch.forEach(function(c){var ct=txt(c);if(ct.indexOf('выбрать видео')>=0||ct.indexOf('select video')>=0||ct.indexOf('choose video')>=0){return;}css(c,'background','transparent');css(c,'background-color','transparent');css(c,'box-shadow','none');css(c,'border','0');});" +
+                        "var p=n.parentElement;for(var j=0;j<3&&p;j++){var pr=p.getBoundingClientRect();if(pr&&pr.width>r.width&&pr.height>r.height){css(p,'background',paneBg);css(p,'background-color',paneBg);}p=p.parentElement;}" +
+                        "}catch(x){}});" +
                         "}catch(x){}}" +
-                        "fixUploadBg();var c=0;var timer=setInterval(function(){fixUploadBg();c++;if(c>40)clearInterval(timer);},150);" +
-                        "setTimeout(fixUploadBg,500);setTimeout(fixUploadBg,1200);setTimeout(fixUploadBg,2600);setTimeout(fixUploadBg,5200);" +
+                        "fixUploadChooserCard();var c=0;var timer=setInterval(function(){fixUploadChooserCard();c++;if(c>40)clearInterval(timer);},120);" +
+                        "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
                         "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
                         "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
