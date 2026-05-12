@@ -762,12 +762,7 @@ public class TikTokWebActivity extends Activity {
                         "fixUploadChooserCard();var c=0;var timer=setInterval(function(){fixUploadChooserCard();c++;if(c>40)clearInterval(timer);},120);" +
                         "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
-                        "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
-                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#fff';document.documentElement.style.colorScheme='light';" +
-                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#fff';document.body.style.color='#161823';document.body.style.colorScheme='light';document.body.style.paddingBottom='0';" +
-                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#fff!important;color:#161823!important;color-scheme:light!important;}body>div,#__next,#app,[id*=root]{min-height:100vh!important;background:#fff!important;color:#161823!important;}*{-webkit-text-size-adjust:100%!important;}@media(prefers-color-scheme:dark){html,body{background:#fff!important;color:#161823!important;color-scheme:light!important;}}';" +
-                        "function hideBadLoginButtons(){try{var bad=['открыть приложение tiktok','open tiktok app','open app'];[].slice.call(document.querySelectorAll('a,button,div[role=button]')).forEach(function(e){var x=txt(e);if(!x)return;for(var i=0;i<bad.length;i++){if(x.indexOf(bad[i])>=0){e.style.setProperty('display','none','important');e.style.setProperty('visibility','hidden','important');break;}}});}catch(x){}}" +
-                        "hideBadLoginButtons();var lc=0;var lt=setInterval(function(){hideBadLoginButtons();lc++;if(lc>30)clearInterval(lt);},200);" +
+                        "return;" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
