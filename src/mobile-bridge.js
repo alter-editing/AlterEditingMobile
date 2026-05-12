@@ -678,7 +678,7 @@ window.alterE = {
   shell: {
     openExternal: async url => Browser.open({ url }),
     openTikTokUpload: async url => {
-      const target = url || 'https://www.tiktok.com/tiktokstudio/upload';
+      const target = url || 'https://www.tiktok.com/upload/?lang=en';
       try {
         if (window.AlterWeb && typeof window.AlterWeb.openTikTokUpload === 'function') {
           const result = String(window.AlterWeb.openTikTokUpload(target) || '');
