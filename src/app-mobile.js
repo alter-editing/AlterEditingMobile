@@ -20,11 +20,11 @@ const VISUAL_RUNTIME = {
   particlesStart: null,
   particlesStop: null
 };
-const AUTH_POLL_MAX_MS = 12 * 60 * 1000;
-const AUTH_POLL_INITIAL_DELAY_MS = 2600;
-const AUTH_POLL_MAX_DELAY_MS = 45000;
-const AUTH_POLL_BACKOFF_FACTOR = 1.65;
-const AUTH_POLL_JITTER = 0.35;
+const AUTH_POLL_MAX_MS = 10 * 60 * 1000;
+const AUTH_POLL_INITIAL_DELAY_MS = 10000;
+const AUTH_POLL_MAX_DELAY_MS = 90000;
+const AUTH_POLL_BACKOFF_FACTOR = 1.8;
+const AUTH_POLL_JITTER = 0.40;
 let authPollActive = false;
 let lastLifecycleResumeAt = 0;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
@@ -263,6 +263,12 @@ function nextAuthPollDelay(attempt){
   const jitter=1+((Math.random()*2-1)*AUTH_POLL_JITTER);
   return Math.round(capped*jitter);
 }
+function getLastAuthStatusCheckAt(){return Number(localStorage.getItem('alter_last_auth_status_check_at')||0);}
+function setLastAuthStatusCheckAt(value=nowMs()){try{localStorage.setItem('alter_last_auth_status_check_at',String(value));}catch(_){}}
+async function waitUntilAuthStatusAllowed(delay){
+  const elapsed=nowMs()-getLastAuthStatusCheckAt();
+  if(elapsed<delay) await waitForVisibleOrTimeout(delay-elapsed);
+}
 async function waitForVisibleOrTimeout(ms){
   const deadline=nowMs()+Math.max(0,Number(ms)||0);
   while(nowMs()<deadline){
@@ -309,12 +315,16 @@ async function pollAuthorization(token,{silent=false}={}){
     let attempt=0;
     let lastStatusError='';
     while(nowMs()-started < AUTH_POLL_MAX_MS){
+      const delay=nextAuthPollDelay(attempt++);
+      await waitUntilAuthStatusAllowed(delay);
+
       const fresh=await window.alterE.settings.get().catch(()=>state.settings);
       if(fresh?.authorized) { state.settings=fresh; state.externalAuthActive=false; document.body.classList.remove('is-external-transition'); renderAuth(); saveUiSnapshot(); return true; }
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
 
       if(!document.hidden){
         try{
+          setLastAuthStatusCheckAt();
           const st=await window.alterE.auth.status(token);
           lastStatusError='';
           if(isServerAuthorized(st)){
@@ -323,12 +333,9 @@ async function pollAuthorization(token,{silent=false}={}){
           }
         }catch(e){
           lastStatusError=String(e?.message||e||'');
-          if(/429|rate.?limit|too many/i.test(lastStatusError)) attempt=Math.max(attempt,4);
+          if(/429|rate.?limit|too many/i.test(lastStatusError)) attempt=Math.max(attempt,5);
         }
       }
-
-      const delay=nextAuthPollDelay(attempt++);
-      await waitForVisibleOrTimeout(delay);
     }
     if(lastStatusError && /429|rate.?limit|too many/i.test(lastStatusError)){
       log('error','authFailed','Rate limit: backoff timeout');
@@ -518,7 +525,7 @@ function togglePanel(id){
   },260);
 }
 function animateTap(id,cls){const e=$(id);if(!e)return;e.classList.remove(cls);void e.offsetWidth;e.classList.add(cls);setTimeout(()=>e.classList.remove(cls),520);}
-function openTikTokStudio(){markExternalTransition('external',true); window.alterE.shell.openTikTokUpload?.('https://www.tiktok.com/tiktokstudio/upload'); setTimeout(()=>markExternalTransition('external',false),1200);}
+function openTikTokStudio(){markExternalTransition('external',true); window.alterE.shell.openTikTokUpload?.('https://www.tiktok.com/upload'); setTimeout(()=>markExternalTransition('external',false),1200);}
 function openTutorial(show){const e=$('tutorialOverlay');if(!e)return;if(show){e.hidden=false;requestAnimationFrame(()=>e.classList.add('is-visible'));return}e.classList.remove('is-visible');setTimeout(()=>{if(!e.classList.contains('is-visible'))e.hidden=true},240);}
 function cleanUiText(value){
   return String(value ?? '')
@@ -706,9 +713,16 @@ async function authorize(){
       $('authText').textContent=t('authWaiting');
     }
   }catch(e){
-    const m=String(e?.message||t('authFailed'));
+    let m=String(e?.message||t('authFailed'));
+    const cooldown=m.match(/AUTH_COOLDOWN:(\d+)/);
+    if(cooldown){
+      const sec=cooldown[1];
+      m=state.settings?.language==='ru' ? `Слишком много попыток. Повторите через ${sec} сек.` : `Too many attempts. Try again in ${sec}s.`;
+    }else if(/429|rate.?limit|too many/i.test(m)){
+      m=state.settings?.language==='ru' ? 'Слишком много попыток. Подождите немного и повторите позже.' : 'Too many attempts. Please wait and try again later.';
+    }
     $('authText').textContent=m;
-    log('error','authFailed','');
+    log('error','authFailed',m);
   }finally{
     if(b && !authPollActive) b.disabled=false;
   }
