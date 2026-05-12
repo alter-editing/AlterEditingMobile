@@ -667,7 +667,6 @@ import android.graphics.Color;
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
     private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-    private static final String MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
 
@@ -685,7 +684,7 @@ public class TikTokWebActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        webView.setBackgroundColor(Color.WHITE);
+        webView.setBackgroundColor(Color.BLACK);
         webView.setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY);
         setContentView(webView);
 
@@ -713,9 +712,6 @@ public class TikTokWebActivity extends Activity {
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setTextZoom(100);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            settings.setForceDark(WebSettings.FORCE_DARK_OFF);
-        }
         settings.setUserAgentString(DESKTOP_USER_AGENT);
         webView.setInitialScale(70);
 
@@ -723,12 +719,6 @@ public class TikTokWebActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                super.onPageStarted(view, url, favicon);
-                applyUserAgentForUrl(url);
-            }
-
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -766,9 +756,9 @@ public class TikTokWebActivity extends Activity {
                         "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
                         "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
-                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='auto';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='';" +
-                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='';document.body.style.paddingBottom='0';" +
-                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:auto!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#fff!important;color:#111!important;color-scheme:light!important;}body>div,#__next,#app,[id*=root]{background:#fff!important;color:#111!important;}button,[role=button]{color:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
+                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#111';document.body.style.paddingBottom='0';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#111!important;}body>div,#__next,#app{min-height:100vh!important;background:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
@@ -816,34 +806,7 @@ public class TikTokWebActivity extends Activity {
         if (url == null || url.trim().isEmpty()) {
             url = "https://www.tiktok.com/tiktokstudio/upload";
         }
-        String startUrl = forceDesktopTikTokUrl(url);
-        applyUserAgentForUrl(startUrl);
-        webView.loadUrl(startUrl);
-    }
-
-    private boolean isTikTokStudioUploadUrl(String url) {
-        if (url == null) return false;
-        String lower = url.toLowerCase();
-        return (lower.contains("tiktokstudio") || lower.contains("/creator-center/upload") || lower.contains("/upload"))
-            && !lower.contains("/login")
-            && !lower.contains("accounts.google")
-            && !lower.contains("oauth");
-    }
-
-    private void applyUserAgentForUrl(String url) {
-        if (webView == null) return;
-        try {
-            WebSettings s = webView.getSettings();
-            if (isTikTokStudioUploadUrl(url)) {
-                s.setUserAgentString(DESKTOP_USER_AGENT);
-                webView.setInitialScale(70);
-                webView.setBackgroundColor(Color.WHITE);
-            } else {
-                s.setUserAgentString(MOBILE_USER_AGENT);
-                webView.setInitialScale(100);
-                webView.setBackgroundColor(Color.WHITE);
-            }
-        } catch (Exception ignored) {}
+        webView.loadUrl(forceDesktopTikTokUrl(url));
     }
 
     private boolean handleUrl(WebView view, String url) {
@@ -855,7 +818,6 @@ public class TikTokWebActivity extends Activity {
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             String forced = forceDesktopTikTokUrl(url);
             if (!forced.equals(url)) {
-                applyUserAgentForUrl(forced);
                 view.loadUrl(forced);
                 return true;
             }
