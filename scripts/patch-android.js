@@ -885,6 +885,8 @@ public class TikTokWebActivity extends Activity {
                     view.evaluateJavascript("(function(){" +
                         "try{" +
                         "var U=(location.href||'').toLowerCase();" +
+                        "function alterAcceptCookies(){try{var words=['allow all','accept all','разрешить все','принять все','allow cookies','accept cookies'];var els=[].slice.call(document.querySelectorAll('button,[role=button]'));for(var i=0;i<els.length;i++){var t=((els[i].innerText||els[i].textContent||'').replace(/\s+/g,' ').trim().toLowerCase());for(var j=0;j<words.length;j++){if(t.indexOf(words[j])>=0){els[i].click();return true;}}}return false;}catch(e){return false;}}" +
+                        "var cookieClicked=alterAcceptCookies();setTimeout(alterAcceptCookies,250);setTimeout(alterAcceptCookies,800);setTimeout(alterAcceptCookies,1600);" +
                         "var isStudio=(U.indexOf('tiktokstudio')>=0||U.indexOf('/creator-center/upload')>=0||U.indexOf('/upload')>=0)&&U.indexOf('/login')<0;" +
                         "var m=document.querySelector('meta[name=viewport]');" +
                         "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
