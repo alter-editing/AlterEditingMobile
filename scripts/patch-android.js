@@ -716,6 +716,9 @@ public class TikTokWebActivity extends Activity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             settings.setForceDark(WebSettings.FORCE_DARK_OFF);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            settings.setAlgorithmicDarkeningAllowed(false);
+        }
         settings.setUserAgentString(DESKTOP_USER_AGENT);
         webView.setInitialScale(70);
 
@@ -723,12 +726,6 @@ public class TikTokWebActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                super.onPageStarted(view, url, favicon);
-                applyUserAgentForUrl(url);
-            }
-
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -766,18 +763,11 @@ public class TikTokWebActivity extends Activity {
                         "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
                         "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
-                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='auto';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='';" +
-                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='';document.body.style.paddingBottom='0';" +
-                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:auto!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;color-scheme:light!important;}*{-webkit-text-size-adjust:100%!important;}';" +
-                        "function fixLoginLight(){try{" +
-                        "var isLogin=(U.indexOf('/login')>=0||document.body.innerText.toLowerCase().indexOf('войдите в tiktok')>=0||document.body.innerText.toLowerCase().indexOf('log in to tiktok')>=0);if(!isLogin)return;" +
-                        "document.documentElement.style.setProperty('color-scheme','light','important');document.body.style.setProperty('color-scheme','light','important');" +
-                        "function isDark(c){if(!c||c==='transparent'||c==='rgba(0, 0, 0, 0)')return false;var m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(!m)return false;return ((+m[1])+(+m[2])+(+m[3]))<120;}" +
-                        "[].slice.call(document.querySelectorAll('body,main,section,article,div,form')).forEach(function(e){try{var r=e.getBoundingClientRect();var cs=getComputedStyle(e);if(r.width>200&&r.height>80&&isDark(cs.backgroundColor)){e.style.setProperty('background','#fff','important');e.style.setProperty('background-color','#fff','important');}if(isDark(cs.color)){e.style.setProperty('color','#161823','important');}}catch(x){}});" +
-                        "[].slice.call(document.querySelectorAll('h1,h2,h3,p,span,label,a,button,input,div')).forEach(function(e){try{var cs=getComputedStyle(e);if(isDark(cs.color)){e.style.setProperty('color','#161823','important');}}catch(x){}});" +
-                        "[].slice.call(document.querySelectorAll('input,textarea')).forEach(function(e){try{e.style.setProperty('background','#fff','important');e.style.setProperty('background-color','#fff','important');e.style.setProperty('color','#161823','important');}catch(x){}});" +
-                        "[].slice.call(document.querySelectorAll('button,a,[role=button]')).forEach(function(e){try{var t=(e.innerText||e.textContent||'').toLowerCase();if(t.indexOf('открыть приложение tiktok')>=0||t.indexOf('open tiktok app')>=0||t.indexOf('open app')>=0){e.style.setProperty('display','none','important');}}catch(x){}});" +
-                        "}catch(x){}}fixLoginLight();var lc=0;var lt=setInterval(function(){fixLoginLight();lc++;if(lc>25)clearInterval(lt);},200);" +
+                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#fff';document.documentElement.style.colorScheme='light';" +
+                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#fff';document.body.style.color='#161823';document.body.style.colorScheme='light';document.body.style.paddingBottom='0';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#fff!important;color:#161823!important;color-scheme:light!important;}body>div,#__next,#app,[id*=root]{min-height:100vh!important;background:#fff!important;color:#161823!important;}*{-webkit-text-size-adjust:100%!important;}@media(prefers-color-scheme:dark){html,body{background:#fff!important;color:#161823!important;color-scheme:light!important;}}';" +
+                        "function hideBadLoginButtons(){try{var bad=['открыть приложение tiktok','open tiktok app','open app'];[].slice.call(document.querySelectorAll('a,button,div[role=button]')).forEach(function(e){var x=txt(e);if(!x)return;for(var i=0;i<bad.length;i++){if(x.indexOf(bad[i])>=0){e.style.setProperty('display','none','important');e.style.setProperty('visibility','hidden','important');break;}}});}catch(x){}}" +
+                        "hideBadLoginButtons();var lc=0;var lt=setInterval(function(){hideBadLoginButtons();lc++;if(lc>30)clearInterval(lt);},200);" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
@@ -825,55 +815,37 @@ public class TikTokWebActivity extends Activity {
         if (url == null || url.trim().isEmpty()) {
             url = "https://www.tiktok.com/tiktokstudio/upload";
         }
-        String startUrl = forceDesktopTikTokUrl(url);
-        applyUserAgentForUrl(startUrl);
-        webView.loadUrl(startUrl);
-    }
-
-    private boolean isTikTokStudioUploadUrl(String url) {
-        if (url == null) return false;
-        String lower = url.toLowerCase();
-        return (lower.contains("tiktokstudio") || lower.contains("/creator-center/upload") || lower.contains("/upload"))
-            && !lower.contains("/login")
-            && !lower.contains("accounts.google")
-            && !lower.contains("oauth");
-    }
-
-    private void applyUserAgentForUrl(String url) {
-        if (webView == null) return;
-        try {
-            WebSettings s = webView.getSettings();
-            if (isTikTokStudioUploadUrl(url)) {
-                s.setUserAgentString(DESKTOP_USER_AGENT);
-                webView.setInitialScale(70);
-                webView.setBackgroundColor(Color.WHITE);
-            } else {
-                s.setUserAgentString(MOBILE_USER_AGENT);
-                webView.setInitialScale(100);
-                webView.setBackgroundColor(Color.WHITE);
-            }
-        } catch (Exception ignored) {}
+        url = forceDesktopTikTokUrl(url);
+        webView.getSettings().setUserAgentString(userAgentForUrl(url));
+        webView.loadUrl(url);
     }
 
     private boolean handleUrl(WebView view, String url) {
         if (url == null) return false;
         String lower = url.toLowerCase();
-        if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
+        if (lower.contains("apps.apple.com") || lower.contains("itunes.apple.com") || lower.contains("play.google.com") || lower.contains("/download") || lower.contains("getapp")) {
             return true;
         }
-        if (lower.contains("apps.apple.com") || lower.contains("itunes.apple.com") || lower.contains("play.google.com") || lower.contains("appgallery.huawei.com") || lower.contains("tiktok.com/download")) {
+        if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
             return true;
         }
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             String forced = forceDesktopTikTokUrl(url);
+            view.getSettings().setUserAgentString(userAgentForUrl(forced));
             if (!forced.equals(url)) {
-                applyUserAgentForUrl(forced);
                 view.loadUrl(forced);
                 return true;
             }
             return false;
         }
         return true;
+    }
+
+    private String userAgentForUrl(String url) {
+        if (url == null) return DESKTOP_USER_AGENT;
+        String lower = url.toLowerCase();
+        boolean isStudio = (lower.contains("tiktokstudio") || lower.contains("/creator-center/upload") || lower.contains("/upload")) && !lower.contains("/login");
+        return isStudio ? DESKTOP_USER_AGENT : MOBILE_USER_AGENT;
     }
 
     private String forceDesktopTikTokUrl(String url) {
