@@ -222,35 +222,21 @@ async function normalizeSessionResponse(data) {
 
 async function createAuthSession() {
   await getRuntimeConfig();
-
-  const lastRequestAt = Number(localStorage.getItem('alter_last_auth_session_request_at') || 0);
-  const cooldownMs = 30000;
-  const elapsed = Date.now() - lastRequestAt;
-  if (elapsed > 0 && elapsed < cooldownMs) {
-    throw new Error(`AUTH_COOLDOWN:${Math.ceil((cooldownMs - elapsed) / 1000)}`);
-  }
-  localStorage.setItem('alter_last_auth_session_request_at', String(Date.now()));
-
-  const payload = { platform: 'android', source: 'mobile', bot: 'AlterEditing_bot' };
+  const payloads = [{ platform: 'android', source: 'mobile', bot: 'AlterEditing_bot' }, { platform: 'desktop' }, {}];
   const endpoints = ['/auth/request', '/auth/create-session'];
   let lastError = null;
-
   for (const endpoint of endpoints) {
-    try {
-      const result = await tryFetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const normalized = await normalizeSessionResponse(result);
-      if (normalized?.session_token) return normalized;
-      lastError = new Error(`Bad auth session response: ${JSON.stringify(result)}`);
-      break;
-    } catch (e) {
-      lastError = e;
-      const msg = String(e?.message || e || '');
-      if (/429|rate.?limit|too many/i.test(msg)) throw e;
-      if (!/404|405|not found|method not allowed/i.test(msg)) break;
+    for (const payload of payloads) {
+      try {
+        const result = await tryFetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const normalized = await normalizeSessionResponse(result);
+        if (normalized?.session_token) return normalized;
+        lastError = new Error(`Bad auth session response: ${JSON.stringify(result)}`);
+      } catch (e) { lastError = e; }
     }
   }
   throw lastError || new Error('auth_session_not_created');
@@ -290,12 +276,7 @@ async function getAuthStatus(token) {
       }
 
       return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'pending' };
-    } catch (e) {
-      lastError = e;
-      const msg = String(e?.message || e || '');
-      if (/429|rate.?limit|too many/i.test(msg)) throw e;
-      if (!/404|405|not found|method not allowed/i.test(msg)) break;
-    }
+    } catch (e) { lastError = e; }
   }
   throw lastError || new Error('auth_status_failed');
 }

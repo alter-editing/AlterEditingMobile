@@ -131,7 +131,7 @@ if (!manifest.includes('android:name=".TikTokWebActivity"')) {
         android:screenOrientation="portrait"
         android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
         android:hardwareAccelerated="true"
-        android:launchMode="singleTop" />
+        android:launchMode="singleTask" />
 </application>`
   );
 }
@@ -663,6 +663,7 @@ public class WebBridge {
     public String openTikTokUpload(String url) {
         try {
             Intent intent = new Intent(activity, TikTokWebActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             intent.putExtra("url", url == null || url.trim().isEmpty() ? "https://www.tiktok.com/upload" : url);
             activity.startActivity(intent);
             return "OK";
@@ -818,10 +819,14 @@ import android.graphics.Color;
 
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
-    private static final String TIKTOK_WEB_UPLOAD_URL = "https://www.tiktok.com/upload";
-    private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.120 Safari/537.36";
+    private static final long SAME_URL_COOLDOWN_MS = 2500L;
+    private static final String DEFAULT_UPLOAD_URL = "https://www.tiktok.com/upload";
+    private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
+    private String lastRequestedUrl = "";
+    private long lastRequestedAt = 0L;
+    private String lastInjectedUrl = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -837,7 +842,7 @@ public class TikTokWebActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        webView.setBackgroundColor(Color.WHITE);
+        webView.setBackgroundColor(Color.BLACK);
         webView.setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY);
         setContentView(webView);
 
@@ -849,17 +854,7 @@ public class TikTokWebActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setJavaScriptCanOpenWindowsAutomatically(true);
-        settings.setSupportMultipleWindows(false);
         settings.setSupportZoom(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
-        settings.setTextZoom(100);
-        settings.setUserAgentString(DESKTOP_USER_AGENT);
-        webView.setInitialScale(70);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         }
@@ -867,6 +862,13 @@ public class TikTokWebActivity extends Activity {
             settings.setSafeBrowsingEnabled(true);
         }
         webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setTextZoom(100);
+        settings.setUserAgentString(DESKTOP_USER_AGENT);
+        webView.setInitialScale(70);
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -876,14 +878,26 @@ public class TikTokWebActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url == null) return;
+                String lower = url.toLowerCase();
+                if (!lower.contains("tiktok.com")) return;
+                if (url.equals(lastInjectedUrl)) return;
+                lastInjectedUrl = url;
+                view.evaluateJavascript(buildTikTokViewportScript(lower), null);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return false;
-                return handleUrl(request.getUrl().toString());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !request.isForMainFrame()) return false;
+                return handleUrl(view, request.getUrl().toString());
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return handleUrl(url);
+                return handleUrl(view, url);
             }
         });
 
@@ -894,19 +908,9 @@ public class TikTokWebActivity extends Activity {
                     filePathCallback.onReceiveValue(null);
                 }
                 filePathCallback = filePath;
-
-                Intent intent;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && params != null) {
-                    intent = params.createIntent();
-                } else {
-                    intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("video/*");
-                }
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 intent.setType("video/*");
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"video/mp4", "video/quicktime", "video/*"});
-
                 try {
                     startActivityForResult(Intent.createChooser(intent, "Select video"), FILE_CHOOSER_REQUEST);
                 } catch (Exception e) {
@@ -923,31 +927,93 @@ public class TikTokWebActivity extends Activity {
             } catch (Exception ignored) {}
         }
 
-        String url = getIntent().getStringExtra("url");
-        if (url == null || url.trim().isEmpty()) url = TIKTOK_WEB_UPLOAD_URL;
-        webView.loadUrl(normalizeTikTokUploadUrl(url));
+        navigateSafely(getStartUrl(getIntent()), true);
     }
 
-    private boolean handleUrl(String url) {
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        navigateSafely(getStartUrl(intent), false);
+    }
+
+    private String getStartUrl(Intent intent) {
+        String url = intent == null ? null : intent.getStringExtra("url");
+        if (url == null || url.trim().isEmpty()) return DEFAULT_UPLOAD_URL;
+        return url.trim();
+    }
+
+    private boolean handleUrl(WebView view, String url) {
         if (url == null) return false;
         String lower = url.toLowerCase();
-        if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) return true;
-        if (lower.contains("play.google.com") || lower.contains("apps.apple.com") || lower.contains("itunes.apple.com")) return true;
-        return false;
+        if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
+            return true;
+        }
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+            String forced = forceDesktopTikTokUrl(url);
+            if (!forced.equals(url)) {
+                navigateSafely(forced, false);
+                return true;
+            }
+            return false;
+        }
+        return true;
     }
 
-    private String normalizeTikTokUploadUrl(String url) {
-        if (url == null || url.trim().isEmpty()) return TIKTOK_WEB_UPLOAD_URL;
+    private void navigateSafely(String url, boolean force) {
+        String target = forceDesktopTikTokUrl(url == null ? DEFAULT_UPLOAD_URL : url.trim());
+        long now = System.currentTimeMillis();
+        if (!force && target.equals(lastRequestedUrl) && (now - lastRequestedAt) < SAME_URL_COOLDOWN_MS) {
+            return;
+        }
+        lastRequestedUrl = target;
+        lastRequestedAt = now;
+        webView.loadUrl(target);
+    }
+
+    private String forceDesktopTikTokUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return DEFAULT_UPLOAD_URL;
+        }
         try {
-            Uri uri = Uri.parse(url);
+            Uri uri = Uri.parse(url.trim());
             String host = uri.getHost();
             if (host == null) return url;
             String lowerHost = host.toLowerCase();
             if (lowerHost.equals("m.tiktok.com") || lowerHost.equals("vm.tiktok.com") || lowerHost.equals("vt.tiktok.com")) {
-                return TIKTOK_WEB_UPLOAD_URL;
+                Uri.Builder builder = uri.buildUpon();
+                builder.authority("www.tiktok.com");
+                return builder.build().toString();
             }
         } catch (Exception ignored) {}
         return url;
+    }
+
+    private String buildTikTokViewportScript(String lowerUrl) {
+        boolean isStudio = (lowerUrl.contains("tiktokstudio") || lowerUrl.contains("/creator-center/upload") || lowerUrl.contains("/upload")) && !lowerUrl.contains("/login");
+        if (isStudio) {
+            return "(function(){try{" +
+                "var m=document.querySelector('meta[name=viewport]');if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
+                "var st=document.getElementById('alter-tiktok-safe-view-fix');if(!st){st=document.createElement('style');st.id='alter-tiktok-safe-view-fix';document.head.appendChild(st);}" +
+                "var W=1280;var bg='#fff';" +
+                "m.content='width='+W+', initial-scale=1, maximum-scale=4, minimum-scale=0.25, user-scalable=yes';" +
+                "document.documentElement.style.minWidth=W+'px';document.documentElement.style.width=W+'px';document.documentElement.style.height='auto';document.documentElement.style.overflowX='auto';document.documentElement.style.overflowY='auto';document.documentElement.style.background=bg;" +
+                "document.body.style.minWidth=W+'px';document.body.style.width=W+'px';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='auto';document.body.style.overflowY='auto';document.body.style.background=bg;document.body.style.paddingBottom='24px';" +
+                "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:24px!important;}body>div,#__next,#app,[id*=root],[class*=layout],[class*=container]{background:#fff!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                "function txt(e){return ((e&&e.innerText)||'').replace(/\\s+/g,' ').trim().toLowerCase();}" +
+                "function css(e,k,v){try{if(e)e.style.setProperty(k,v,'important');}catch(x){}}" +
+                "function fixUploadChooserCard(){try{var paneBg='#f3f3f3';css(document.documentElement,'background','#fff');css(document.body,'background','#fff');var keys=['выберите видео для загрузки','select video','choose video'];var nodes=[].slice.call(document.querySelectorAll('div,section,article'));nodes.forEach(function(n){try{var t=txt(n);var hit=false;for(var i=0;i<keys.length;i++){if(t.indexOf(keys[i])>=0){hit=true;break;}}if(!hit)return;var r=n.getBoundingClientRect();if(!r||r.width<120||r.height<60||r.width>700||r.height>420)return;css(n,'background',paneBg);css(n,'background-color',paneBg);css(n,'box-shadow','none');css(n,'border','0');css(n,'outline','0');var ch=[].slice.call(n.children||[]);ch.forEach(function(c){var ct=txt(c);if(ct.indexOf('выбрать видео')>=0||ct.indexOf('select video')>=0||ct.indexOf('choose video')>=0){return;}css(c,'background','transparent');css(c,'background-color','transparent');css(c,'box-shadow','none');css(c,'border','0');});var p=n.parentElement;for(var j=0;j<3&&p;j++){var pr=p.getBoundingClientRect();if(pr&&pr.width>r.width&&pr.height>r.height){css(p,'background',paneBg);css(p,'background-color',paneBg);}p=p.parentElement;}}catch(x){}});}catch(x){}}" +
+                "fixUploadChooserCard();var c=0;var timer=setInterval(function(){fixUploadChooserCard();c++;if(c>10)clearInterval(timer);},250);setTimeout(fixUploadChooserCard,800);setTimeout(fixUploadChooserCard,2200);" +
+                "}catch(e){}})()";
+        }
+        return "(function(){try{" +
+            "var m=document.querySelector('meta[name=viewport]');if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
+            "var st=document.getElementById('alter-tiktok-safe-view-fix');if(!st){st=document.createElement('style');st.id='alter-tiktok-safe-view-fix';document.head.appendChild(st);}" +
+            "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
+            "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
+            "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#111';document.body.style.paddingBottom='0';" +
+            "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#111!important;}body>div,#__next,#app{min-height:100vh!important;background:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+            "}catch(e){}})()";
     }
 
     @Override
@@ -956,13 +1022,8 @@ public class TikTokWebActivity extends Activity {
         if (requestCode == FILE_CHOOSER_REQUEST && filePathCallback != null) {
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null) {
-                if (data.getClipData() != null) {
-                    int count = data.getClipData().getItemCount();
-                    results = new Uri[count];
-                    for (int i = 0; i < count; i++) results[i] = data.getClipData().getItemAt(i).getUri();
-                } else if (data.getData() != null) {
-                    results = new Uri[]{data.getData()};
-                }
+                Uri uri = data.getData();
+                if (uri != null) results = new Uri[]{uri};
             }
             filePathCallback.onReceiveValue(results);
             filePathCallback = null;
@@ -979,8 +1040,11 @@ public class TikTokWebActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -990,7 +1054,7 @@ public class TikTokWebActivity extends Activity {
             filePathCallback = null;
         }
         if (webView != null) {
-            webView.stopLoading();
+            try { webView.stopLoading(); } catch (Exception ignored) {}
             webView.setWebChromeClient(null);
             webView.setWebViewClient(null);
             webView.destroy();
@@ -999,6 +1063,7 @@ public class TikTokWebActivity extends Activity {
         super.onDestroy();
     }
 }
+
 `, 'utf8');
 
   fs.writeFileSync(path.join(packageDir, 'GalleryBridge.java'), `package ${packageName};
