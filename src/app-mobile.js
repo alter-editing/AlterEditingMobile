@@ -31,6 +31,16 @@ let fileInput;
 
 function t(k){return (i18n[state.settings?.language || 'en'] || i18n.en)[k] || i18n.en[k] || k;}
 
+
+function playAuthButtonAnimation(){
+  const btn = $('authButton');
+  if(!btn) return;
+  btn.classList.remove('auth-button-tap-anim');
+  void btn.offsetWidth;
+  btn.classList.add('auth-button-tap-anim');
+  setTimeout(()=>btn.classList.remove('auth-button-tap-anim'), 420);
+}
+
 function resetAuthButtonState(){
   const btn = $('authButton');
   if(btn){
@@ -454,10 +464,9 @@ async function init(){
 
 function hardAuthTapHandler(event){
   try{
-    // Keep default button visual feedback/animations alive.
-    // Only stop bubbling so overlay layers do not steal the tap.
     event?.stopPropagation?.();
   }catch(_){}
+  playAuthButtonAnimation();
   resetAuthButtonState();
   authorize();
 }
@@ -497,6 +506,8 @@ function bind(){
   {
     const authBtn = $('authButton');
     if(authBtn){
+      authBtn.addEventListener('touchstart', ()=>playAuthButtonAnimation(), {passive:true});
+      authBtn.addEventListener('pointerdown', ()=>playAuthButtonAnimation(), {passive:true});
       authBtn.addEventListener('click', hardAuthTapHandler, {passive:false});
       authBtn.addEventListener('touchend', hardAuthTapHandler, {passive:false});
       authBtn.addEventListener('pointerup', hardAuthTapHandler, {passive:false});
