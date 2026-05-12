@@ -21,7 +21,10 @@ const VISUAL_RUNTIME = {
   particlesStop: null
 };
 const AUTH_POLL_MAX_MS = 12 * 60 * 1000;
-const AUTH_POLL_INTERVAL_MS = 1800;
+const AUTH_POLL_INITIAL_DELAY_MS = 2600;
+const AUTH_POLL_MAX_DELAY_MS = 45000;
+const AUTH_POLL_BACKOFF_FACTOR = 1.65;
+const AUTH_POLL_JITTER = 0.35;
 let authPollActive = false;
 let lastLifecycleResumeAt = 0;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
@@ -253,6 +256,24 @@ async function cyclePerformanceMode(){
 }
 
 function nowMs(){return Date.now ? Date.now() : new Date().getTime();}
+function sleep(ms){return new Promise(r=>setTimeout(r,Math.max(0,Number(ms)||0)));}
+function nextAuthPollDelay(attempt){
+  const exp=AUTH_POLL_INITIAL_DELAY_MS*Math.pow(AUTH_POLL_BACKOFF_FACTOR,Math.max(0,attempt));
+  const capped=Math.min(AUTH_POLL_MAX_DELAY_MS,exp);
+  const jitter=1+((Math.random()*2-1)*AUTH_POLL_JITTER);
+  return Math.round(capped*jitter);
+}
+async function waitForVisibleOrTimeout(ms){
+  const deadline=nowMs()+Math.max(0,Number(ms)||0);
+  while(nowMs()<deadline){
+    if(document.hidden){
+      await sleep(1000);
+      if(!document.hidden) return;
+    }else{
+      await sleep(deadline-nowMs());
+    }
+  }
+}
 function authSessionIsFresh(settings){
   const started=Number(settings?.pendingAuthStartedAt||0);
   return Boolean(settings?.pendingAuthToken && started && (nowMs()-started)<AUTH_POLL_MAX_MS);
@@ -285,16 +306,32 @@ async function pollAuthorization(token,{silent=false}={}){
   if(!silent && $('authText')) $('authText').textContent=t('authWaiting');
   try{
     const started=nowMs();
+    let attempt=0;
+    let lastStatusError='';
     while(nowMs()-started < AUTH_POLL_MAX_MS){
       const fresh=await window.alterE.settings.get().catch(()=>state.settings);
       if(fresh?.authorized) { state.settings=fresh; state.externalAuthActive=false; document.body.classList.remove('is-external-transition'); renderAuth(); saveUiSnapshot(); return true; }
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
-      const st=await window.alterE.auth.status(token).catch(()=>null);
-      if(isServerAuthorized(st)){
-        await completeAuthorization(token);
-        return true;
+
+      if(!document.hidden){
+        try{
+          const st=await window.alterE.auth.status(token);
+          lastStatusError='';
+          if(isServerAuthorized(st)){
+            await completeAuthorization(token);
+            return true;
+          }
+        }catch(e){
+          lastStatusError=String(e?.message||e||'');
+          if(/429|rate.?limit|too many/i.test(lastStatusError)) attempt=Math.max(attempt,4);
+        }
       }
-      await new Promise(r=>setTimeout(r,AUTH_POLL_INTERVAL_MS));
+
+      const delay=nextAuthPollDelay(attempt++);
+      await waitForVisibleOrTimeout(delay);
+    }
+    if(lastStatusError && /429|rate.?limit|too many/i.test(lastStatusError)){
+      log('error','authFailed','Rate limit: backoff timeout');
     }
     return false;
   }finally{
