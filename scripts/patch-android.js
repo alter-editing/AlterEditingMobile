@@ -685,7 +685,7 @@ public class TikTokWebActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        webView.setBackgroundColor(Color.BLACK);
+        webView.setBackgroundColor(Color.WHITE);
         webView.setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY);
         setContentView(webView);
 
@@ -763,9 +763,9 @@ public class TikTokWebActivity extends Activity {
                         "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
                         "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
-                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
-                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#111';document.body.style.paddingBottom='0';" +
-                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#111!important;}body>div,#__next,#app{min-height:100vh!important;background:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='auto';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='';" +
+                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='';document.body.style.paddingBottom='0';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:auto!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;}*{-webkit-text-size-adjust:100%!important;}';" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
@@ -838,7 +838,7 @@ public class TikTokWebActivity extends Activity {
             } else {
                 s.setUserAgentString(MOBILE_USER_AGENT);
                 webView.setInitialScale(100);
-                webView.setBackgroundColor(Color.BLACK);
+                webView.setBackgroundColor(Color.WHITE);
             }
         } catch (Exception ignored) {}
     }
