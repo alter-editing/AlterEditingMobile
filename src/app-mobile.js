@@ -20,14 +20,35 @@ const VISUAL_RUNTIME = {
   particlesStart: null,
   particlesStop: null
 };
-const AUTH_POLL_MAX_MS = 12 * 60 * 1000;
-const AUTH_POLL_INTERVAL_MS = 1800;
+const AUTH_POLL_MAX_MS = 90 * 1000;
+const AUTH_POLL_INTERVAL_MS = 2500;
 let authPollActive = false;
+let authClickLockedUntil = 0;
+let authTapInProgress = false;
 let lastLifecycleResumeAt = 0;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
 let fileInput;
 
 function t(k){return (i18n[state.settings?.language || 'en'] || i18n.en)[k] || i18n.en[k] || k;}
+
+function resetAuthButtonState(){
+  const btn = $('authButton');
+  if(btn){
+    btn.disabled = false;
+    btn.removeAttribute('disabled');
+    btn.removeAttribute('aria-disabled');
+    btn.classList.remove('is-loading','is-disabled','disabled','loading');
+    btn.style.pointerEvents = 'auto';
+    btn.style.opacity = '';
+    btn.style.touchAction = 'manipulation';
+    btn.style.webkitTapHighlightColor = 'transparent';
+  }
+  const overlay = $('authOverlay');
+  if(overlay){
+    overlay.style.pointerEvents = '';
+  }
+}
+
 
 const DESKTOP_UPLOAD_IMAGES = {
   en:{
@@ -351,6 +372,7 @@ async function resumeAppState(){
   }
 }
 function bindLifecycleResume(){
+  clearStaleAuthProgress();
   window.alterE?.app?.onStateChange?.(active=>{
     setVisualPaused(!active);
     if(active) resumeAppState();
@@ -429,9 +451,34 @@ async function init(){
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
   if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
   setTimeout(()=>checkAppUpdateSoon({force:true}), 1800);
+  setInterval(resetAuthButtonState, 2500);
+}
+
+
+function hardAuthTapHandler(event){
+  try{
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+  }catch(_){}
+  resetAuthButtonState();
+  authorize();
+}
+
+
+function bindAuthOverlaySafety(){
+  const overlay = $('authOverlay');
+  const btn = $('authButton');
+  if(!overlay || !btn) return;
+  overlay.addEventListener('touchend', e=>{
+    if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
+  }, {passive:false});
+  overlay.addEventListener('pointerup', e=>{
+    if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
+  }, {passive:false});
 }
 
 function bind(){
+  bindAuthOverlaySafety();
   $('dropZone')?.addEventListener('click',openVideoPicker);
   $('dropZone')?.addEventListener('dragover',e=>{e.preventDefault();$('dropZone').classList.add('is-dragover')});
   $('dropZone')?.addEventListener('dragleave',()=>$('dropZone').classList.remove('is-dragover'));
@@ -449,7 +496,14 @@ function bind(){
   $('themeButton')?.addEventListener('click',switchTheme);
   $('performanceButton')?.addEventListener('click',cyclePerformanceMode);
   $('logoutButton')?.addEventListener('click',async()=>{state.settings=await window.alterE.settings.update({authorized:false,authToken:''});renderAuth()});
-  $('authButton')?.addEventListener('click',authorize);
+  {
+    const authBtn = $('authButton');
+    if(authBtn){
+      authBtn.addEventListener('click', hardAuthTapHandler, {passive:false});
+      authBtn.addEventListener('touchend', hardAuthTapHandler, {passive:false});
+      authBtn.addEventListener('pointerup', hardAuthTapHandler, {passive:false});
+    }
+  }
   $('howToUseButton')?.addEventListener('click',()=>openTutorial(true));
   $('tutorialCloseButton')?.addEventListener('click',()=>openTutorial(false));
   $('tutorialDoneButton')?.addEventListener('click',()=>openTutorial(false));
@@ -579,6 +633,22 @@ function applyText(){
   renderLogs();
 }
 
+
+async function clearStaleAuthProgress(){
+  const started = Number(state.settings?.authStartedAt || 0);
+  const pending = state.settings?.pendingAuthToken || '';
+  if(!pending && !state.settings?.authInProgress) { resetAuthButtonState(); return; }
+  if(!started || Date.now() - started > 90 * 1000){
+    state.settings = await window.alterE.settings.update({
+      authInProgress:false,
+      pendingAuthToken:'',
+      authStartedAt:0
+    }).catch(()=>state.settings);
+    saveUiSnapshotSoon?.();
+  }
+  resetAuthButtonState();
+}
+
 async function validateStoredAuthorization(){
   const token=state.settings?.authToken||'';
   if(!state.settings?.authorized||!token)return;
@@ -589,7 +659,8 @@ async function validateStoredAuthorization(){
   }
 }
 
-function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);}
+function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);resetAuthButtonState();}
+
 function resetPreviewElement(v){
   if(!v)return;
   try{v.pause?.();}catch(_){}
@@ -717,28 +788,49 @@ async function patch(){
   }
 }
 async function authorize(){
-  const b=$('authButton');
+  const stamp = Date.now();
+  if(authTapInProgress && stamp < authClickLockedUntil) return;
+  authTapInProgress = true;
+  authClickLockedUntil = stamp + 1600;
+  resetAuthButtonState();
+
   try{
-    if(b) b.disabled=true;
-    $('authText').textContent=t('authChecking');
-    const s=await window.alterE.auth.createSession();
-    const token=s?.session_token||s?.sessionToken||s?.session_id||s?.sessionId||s?.token||s?.id||'';
-    if(!token)throw new Error('auth_token_missing');
-    const url=s?.auth_url||s?.authUrl||s?.telegram_url||s?.telegramUrl||`https://t.me/AlterEditing_bot?start=auth_${encodeURIComponent(token)}`;
-    await savePendingAuth(token,url);
-    $('authText').textContent=t('authWaiting');
-    markExternalTransition('auth',true);
-    await window.alterE.shell.openExternal(url);
-    const ok=await pollAuthorization(token);
-    if(!ok && !state.settings?.authorized){
-      $('authText').textContent=t('authWaiting');
-    }
+    toast(t('authChecking'), '');
+
+    // Always create a fresh Telegram auth session on manual tap.
+    // This prevents a stale pending session from blocking the button.
+    const session = await window.alterE.auth.createSession();
+    const token = session?.session_token || session?.token || '';
+    const telegramUrl = session?.auth_url || session?.telegram_url || session?.url || '';
+
+    if(!token || !telegramUrl) throw new Error('auth_session_not_created');
+
+    state.settings = await window.alterE.settings.update({
+      authorized:false,
+      authToken:'',
+      pendingAuthToken:token,
+      authInProgress:true,
+      authStartedAt:Date.now()
+    });
+
+    saveUiSnapshotSoon?.();
+    markExternalTransition('external', true);
+    await window.alterE.shell.openExternal(telegramUrl);
+    setTimeout(()=>markExternalTransition('external', false), 900);
+
+    toast(t('authWaiting'), '');
+    pollAuthorization(token, {silent:true});
   }catch(e){
-    const m=String(e?.message||t('authFailed'));
-    $('authText').textContent=m;
-    log('error','authFailed','');
+    resetAuthButtonState();
+    state.settings = await window.alterE.settings.update({
+      authInProgress:false,
+      pendingAuthToken:'',
+      authStartedAt:0
+    }).catch(()=>state.settings);
+    saveUiSnapshotSoon?.();
+    toast(t('authFailed'), String(e?.message || e || ''));
   }finally{
-    if(b && !authPollActive) b.disabled=false;
+    setTimeout(()=>{ authTapInProgress = false; resetAuthButtonState(); }, 500);
   }
 }
 async function switchLanguage(){const o=['en','ru','tr'];const n=o[(o.indexOf(state.settings.language)+1)%o.length];state.settings=await window.alterE.settings.update({language:n});applyText()}

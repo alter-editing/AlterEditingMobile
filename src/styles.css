@@ -1118,3 +1118,27 @@ body[data-theme='light'] .desktop-upload-step-image{border-color:rgba(18,26,36,.
   object-fit:contain!important;
   background:rgba(0,0,0,.32)!important;
 }
+
+
+/* === HARD FIX: Telegram auth button tap reliability === */
+.auth-overlay{
+  pointer-events:auto!important;
+  z-index:999!important;
+}
+.auth-card{
+  pointer-events:auto!important;
+}
+#authButton{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+  user-select:none!important;
+  cursor:pointer!important;
+  position:relative!important;
+  z-index:1001!important;
+}
+#authButton:disabled{
+  opacity:1!important;
+  pointer-events:auto!important;
+  filter:none!important;
+}
