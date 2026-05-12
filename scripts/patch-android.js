@@ -418,6 +418,7 @@ public class MediaPermissionBridge {
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.os.Build;
 import android.webkit.JavascriptInterface;
 
@@ -469,6 +470,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
@@ -622,6 +624,7 @@ public class PerformanceBridge {
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.webkit.JavascriptInterface;
 
 public class WebBridge {
@@ -649,6 +652,7 @@ public class WebBridge {
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -663,6 +667,7 @@ import android.webkit.WebViewClient;
 import android.view.Window;
 import android.view.WindowManager;
 import android.graphics.Color;
+import android.widget.Toast;
 
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
@@ -812,6 +817,10 @@ public class TikTokWebActivity extends Activity {
     private boolean handleUrl(WebView view, String url) {
         if (url == null) return false;
         String lower = url.toLowerCase();
+        if (isGoogleAuthUrl(url)) {
+            openExternalBrowser(url);
+            return true;
+        }
         if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
             return true;
         }
@@ -824,6 +833,36 @@ public class TikTokWebActivity extends Activity {
             return false;
         }
         return true;
+    }
+
+    private boolean isGoogleAuthUrl(String url) {
+        if (url == null) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            if (host == null) return false;
+            String h = host.toLowerCase();
+            String u = url.toLowerCase();
+            return h.equals("accounts.google.com")
+                || h.endsWith(".accounts.google.com")
+                || (h.endsWith("google.com") && (u.contains("/signin/") || u.contains("/o/oauth") || u.contains("oauth2") || u.contains("/accounts/")));
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void openExternalBrowser(String url) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            Toast.makeText(this, "Google вход открыт во внешнем браузере", Toast.LENGTH_SHORT).show();
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Не найден браузер для Google входа", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Не удалось открыть Google вход", Toast.LENGTH_LONG).show();
+        }
     }
 
     private String forceDesktopTikTokUrl(String url) {
