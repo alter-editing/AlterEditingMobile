@@ -105,6 +105,7 @@ manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
 });
 
 
+
 if (!manifest.includes('android:name="androidx.core.content.FileProvider"')) {
   manifest = manifest.replace(
     '</application>',
@@ -672,6 +673,7 @@ public class WebBridge {
 }
 `, 'utf8');
 
+
   fs.writeFileSync(path.join(packageDir, 'UpdateBridge.java'), `package ${packageName};
 
 import android.app.Activity;
@@ -680,6 +682,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
+import android.widget.Toast;
 import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -702,22 +705,26 @@ public class UpdateBridge {
         installing = true;
         final String url = apkUrl.trim();
         final String name = sanitizeName(apkName == null || apkName.trim().isEmpty() ? "AlterEditingMethod-update.apk" : apkName.trim());
+        toast("Скачиваем обновление...");
         new Thread(() -> {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !activity.getPackageManager().canRequestPackageInstalls()) {
+                    installing = false;
+                    toast("Разрешите установку из этого приложения и нажмите обновление ещё раз");
                     Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName()));
                     settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     activity.startActivity(settingsIntent);
-                    installing = false;
                     return;
                 }
-                File dir = new File(activity.getExternalCacheDir(), "updates");
+                File dir = new File(activity.getCacheDir(), "updates");
                 if (!dir.exists()) dir.mkdirs();
                 File apk = new File(dir, name.endsWith(".apk") ? name : name + ".apk");
                 download(url, apk);
+                if (!apk.exists() || apk.length() < 1024) throw new Exception("Downloaded APK is empty");
                 activity.runOnUiThread(() -> openInstaller(apk));
             } catch (Exception e) {
                 installing = false;
+                toast("Не удалось скачать или открыть APK: " + e.getMessage());
             }
         }).start();
         return "OK";
@@ -725,10 +732,11 @@ public class UpdateBridge {
 
     private void download(String urlText, File outFile) throws Exception {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlText).openConnection();
-        conn.setInstanceFollowRedirects(true);
+        conn.setInstanceFollowRedirects(false);
         conn.setConnectTimeout(20000);
-        conn.setReadTimeout(60000);
+        conn.setReadTimeout(120000);
         conn.setRequestProperty("User-Agent", "AlterEditingMobileUpdater");
+        conn.setRequestProperty("Accept", "application/octet-stream,*/*");
         conn.connect();
         int code = conn.getResponseCode();
         if (code >= 300 && code < 400) {
@@ -752,26 +760,39 @@ public class UpdateBridge {
 
     private void openInstaller(File apk) {
         try {
+            installing = false;
             Uri uri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apk);
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            intent.setData(uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+            intent.putExtra(Intent.EXTRA_RETURN_RESULT, false);
             activity.startActivity(intent);
-        } catch (Exception e) {
+        } catch (Exception first) {
             try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.fromFile(apk));
-                intent.setDataAndType(Uri.fromFile(apk), "application/vnd.android.package-archive");
+                Uri uri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apk);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 activity.startActivity(intent);
-            } catch (Exception ignored) {}
-        } finally {
-            installing = false;
+            } catch (Exception second) {
+                toast("Не удалось открыть установщик APK");
+            } finally {
+                installing = false;
+            }
         }
     }
 
     private String sanitizeName(String name) {
         return name.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    private void toast(String text) {
+        try {
+            activity.runOnUiThread(() -> Toast.makeText(activity, text, Toast.LENGTH_LONG).show());
+        } catch (Exception ignored) {}
     }
 }
 `, 'utf8');

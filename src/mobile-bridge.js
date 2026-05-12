@@ -594,18 +594,25 @@ async function openUpdateInstall(target) {
   const name = typeof target === 'string' ? 'AlterEditingMethod-update.apk' : (target?.apkName || 'AlterEditingMethod-update.apk');
   if (!url) return false;
 
-  // Android: download the APK inside the app and open the system installer immediately.
-  // Opening the GitHub APK URL in Browser often leaves the user with a downloaded file
-  // that cannot be opened from the browser notification. Native install avoids that.
+  // Use the native Android installer bridge. Do NOT open the GitHub APK in Browser:
+  // Chrome/Custom Tabs can download the file but often cannot open/install it from
+  // the notification. Native bridge downloads the APK into app cache and launches
+  // Android's package installer directly.
   try {
-    if (window.AlterUpdate?.installApk) {
-      const result = window.AlterUpdate.installApk(String(url), String(name));
+    const bridge = window.AlterUpdate;
+    if (bridge && typeof bridge.installApk === 'function') {
+      const result = bridge.installApk(String(url), String(name));
       if (result === 'OK' || result === 'BUSY') return true;
+      console.warn('AlterUpdate.installApk returned:', result);
+    } else {
+      console.warn('AlterUpdate native bridge is unavailable. Rebuild and install the APK with the new native bridge.');
     }
-  } catch (_) {}
+  } catch (error) {
+    console.warn('AlterUpdate native bridge failed:', error);
+  }
 
-  await Browser.open({ url });
-  return true;
+  alert('Не удалось открыть установщик автоматически. Установите APK из уведомления или обновите приложение после новой сборки с native installer.');
+  return false;
 }
 
 window.alterE = {
