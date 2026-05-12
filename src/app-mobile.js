@@ -487,7 +487,7 @@ function openTikTokStudio(){
   if(now<tiktokUploadOpenLockedUntil){return;}
   tiktokUploadOpenLockedUntil=now+7000;
   markExternalTransition('external',true);
-  window.alterE.shell.openTikTokUpload?.('https://www.tiktok.com/upload');
+  window.alterE.shell.openTikTokUpload?.('https://www.tiktok.com/tiktokstudio/upload?from=creator_center');
   setTimeout(()=>markExternalTransition('external',false),1200);
 }
 function openTutorial(show){const e=$('tutorialOverlay');if(!e)return;if(show){e.hidden=false;requestAnimationFrame(()=>e.classList.add('is-visible'));return}e.classList.remove('is-visible');setTimeout(()=>{if(!e.classList.contains('is-visible'))e.hidden=true},240);}
