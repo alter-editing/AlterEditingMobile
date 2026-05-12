@@ -7,6 +7,8 @@ const i18n = {
 };
 
 const state = { settings:null, file:null, fileUrl:'', working:false, logs:[], filePickerActive:false, externalAuthActive:false };
+const UPDATE_DISMISSED_THIS_SESSION = new Set();
+let lastUpdateCheckAt = 0;
 const PERF = {
   lowEnd: (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4),
   reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -311,6 +313,7 @@ async function resumeAppState(){
   applyPerformanceProfile();
   applyText();
   renderAuth();
+  setTimeout(()=>checkAppUpdateSoon({force:true}), 700);
   if(state.file) renderVideo();
   setTimeout(()=>{ if(state.filePickerActive){ state.filePickerActive=false; document.body.classList.remove('is-external-transition'); saveUiSnapshotSoon(); } },1200);
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){
@@ -358,23 +361,26 @@ function buildUpdatePrompt(info){
   document.body.appendChild(overlay);
   requestAnimationFrame(()=>overlay.classList.add('is-visible'));
   overlay.querySelector('#updateLaterButton')?.addEventListener('click',()=>{
-    localStorage.setItem('alter_update_dismissed', info?.latestVersion || info?.releaseName || '');
+    const versionKey=String(info?.latestVersion||info?.releaseName||'');
+    if(versionKey) UPDATE_DISMISSED_THIS_SESSION.add(versionKey);
     overlay.classList.remove('is-visible');
     setTimeout(()=>overlay.remove(),220);
   });
   overlay.querySelector('#updateInstallButton')?.addEventListener('click',async()=>{
-    localStorage.setItem('alter_update_dismissed','');
     try{ await window.alterE?.update?.install?.(info); }catch(_){ if(info?.releaseUrl) await window.alterE?.shell?.openExternal?.(info.releaseUrl); }
   });
 }
 
-async function checkAppUpdateSoon(){
+async function checkAppUpdateSoon({force=false}={}){
   try{
     if(!window.alterE?.update?.check) return;
+    const stamp=nowMs();
+    if(!force && stamp-lastUpdateCheckAt<30000) return;
+    lastUpdateCheckAt=stamp;
     const info=await window.alterE.update.check();
     if(info?.status!=='available') return;
-    const dismissed=localStorage.getItem('alter_update_dismissed')||'';
-    if(dismissed && dismissed===(info.latestVersion||info.releaseName)) return;
+    const versionKey=String(info.latestVersion||info.releaseName||'');
+    if(versionKey && UPDATE_DISMISSED_THIS_SESSION.has(versionKey)) return;
     buildUpdatePrompt(info);
   }catch(_){ }
 }
@@ -395,7 +401,7 @@ async function init(){
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){pollAuthorization(state.settings.pendingAuthToken,{silent:true});}
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
   if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
-  setTimeout(checkAppUpdateSoon, 1800);
+  setTimeout(()=>checkAppUpdateSoon({force:true}), 1800);
 }
 
 function bind(){

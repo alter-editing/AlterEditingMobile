@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - main
+      - dev
     tags:
       - 'v*'
+
   workflow_dispatch:
     inputs:
       version:
@@ -91,7 +93,6 @@ jobs:
         run: pnpm exec cap sync android
 
       - name: Decode Android signing key
-        if: ${{ env.IS_TAG_RELEASE == 'true' || env.MANUAL_RELEASE == 'true' }}
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -99,16 +100,22 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [[ -z "${ANDROID_KEYSTORE_BASE64}" || -z "${ANDROID_KEYSTORE_PASSWORD}" || -z "${ANDROID_KEY_ALIAS}" || -z "${ANDROID_KEY_PASSWORD}" ]]; then
-            echo "Missing Android signing secrets."
-            echo "Add these repository secrets before publishing releases:"
-            echo "ANDROID_KEYSTORE_BASE64"
-            echo "ANDROID_KEYSTORE_PASSWORD"
-            echo "ANDROID_KEY_ALIAS"
-            echo "ANDROID_KEY_PASSWORD"
-            echo "Use create-release-keystore.bat and README_ANDROID_SIGNING_SECRETS_RU.txt."
-            exit 1
+          RELEASE_REQUESTED=false
+          if [[ "${IS_TAG_RELEASE}" == "true" || "${MANUAL_RELEASE}" == "true" ]]; then
+            RELEASE_REQUESTED=true
           fi
+
+          if [[ -z "${ANDROID_KEYSTORE_BASE64}" || -z "${ANDROID_KEYSTORE_PASSWORD}" || -z "${ANDROID_KEY_ALIAS}" || -z "${ANDROID_KEY_PASSWORD}" ]]; then
+            if [[ "${RELEASE_REQUESTED}" == "true" ]]; then
+              echo "Missing Android signing secrets. Release builds require signing."
+              echo "Add repository secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD"
+              exit 1
+            fi
+            echo "No Android signing secrets found. Building unsigned/debug APK artifact."
+            echo "SIGNED_BUILD=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
           echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release.keystore
           echo "ANDROID_KEYSTORE_PATH=${GITHUB_WORKSPACE}/android/app/release.keystore" >> "$GITHUB_ENV"
 
@@ -127,6 +134,7 @@ jobs:
             echo "Requested alias '${ANDROID_KEY_ALIAS}' was not found. Using detected alias: ${RESOLVED_ALIAS}"
           fi
           echo "ANDROID_KEY_ALIAS=${RESOLVED_ALIAS}" >> "$GITHUB_ENV"
+          echo "SIGNED_BUILD=true" >> "$GITHUB_ENV"
 
       - name: Patch Android project
         env:
@@ -138,12 +146,11 @@ jobs:
         shell: bash
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          if [[ "${IS_TAG_RELEASE}" == "true" || "${MANUAL_RELEASE}" == "true" ]]; then
+          if [[ "${SIGNED_BUILD}" == "true" ]]; then
             ./gradlew assembleRelease
           else
             ./gradlew assembleDebug
@@ -155,7 +162,7 @@ jobs:
         run: |
           mkdir -p release-out
           VERSION="${{ steps.version.outputs.version }}"
-          if [[ "${IS_TAG_RELEASE}" == "true" || "${MANUAL_RELEASE}" == "true" ]]; then
+          if [[ "${SIGNED_BUILD}" == "true" ]]; then
             APK_PATH="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           else
             APK_PATH="$(find android/app/build/outputs/apk/debug -name '*.apk' | head -n 1)"

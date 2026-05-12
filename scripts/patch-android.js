@@ -725,33 +725,43 @@ public class TikTokWebActivity extends Activity {
                 if (url != null && url.toLowerCase().contains("tiktok.com")) {
                     view.evaluateJavascript("(function(){" +
                         "try{" +
-                        "var W=1280;" +
+                        "var U=(location.href||'').toLowerCase();" +
+                        "var isStudio=(U.indexOf('tiktokstudio')>=0||U.indexOf('/creator-center/upload')>=0||U.indexOf('/upload')>=0)&&U.indexOf('/login')<0;" +
                         "var m=document.querySelector('meta[name=viewport]');" +
                         "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
+                        "var st=document.getElementById('alter-tiktok-safe-view-fix');" +
+                        "if(!st){st=document.createElement('style');st.id='alter-tiktok-safe-view-fix';document.head.appendChild(st);}" +
+                        "if(isStudio){" +
+                        "var W=1280;var bg='#fff';" +
                         "m.content='width='+W+', initial-scale=1, maximum-scale=4, minimum-scale=0.25, user-scalable=yes';" +
-                        "document.documentElement.style.minWidth=W+'px';" +
-                        "document.documentElement.style.width=W+'px';" +
-                        "document.documentElement.style.height='auto';" +
-                        "document.documentElement.style.overflowX='auto';" +
-                        "document.documentElement.style.overflowY='auto';" +
-                        "document.body.style.minWidth=W+'px';" +
-                        "document.body.style.width=W+'px';" +
-                        "document.body.style.height='auto';" +
-                        "document.body.style.minHeight='100vh';" +
-                        "document.body.style.overflowX='auto';" +
-                        "document.body.style.overflowY='auto';" +
-                        "var st=document.getElementById('alter-tiktok-desktop-fix');" +
-                        "if(!st){st=document.createElement('style');st.id='alter-tiktok-desktop-fix';document.head.appendChild(st);}" +
-                        "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:128px!important;}*{-webkit-text-size-adjust:100%!important;}';" +
-                        "if(!window.__alterTikTokActionFix){window.__alterTikTokActionFix=1;" +
-                        "var texts=['опубликовать','публикация','запланировать','сохранить','черновик','publish','post','schedule','save','draft'];" +
-                        "function txt(e){return ((e&&e.innerText)||'').replace(/\\s+/g,' ').trim().toLowerCase();}" +
-                        "function hasAction(e){var t=txt(e);for(var i=0;i<texts.length;i++){if(t.indexOf(texts[i])>=0)return true;}return false;}" +
-                        "function fixActions(){try{var all=[].slice.call(document.querySelectorAll('button,[role=button],a'));var b=all.filter(hasAction);if(!b.length)return;var bar=b[0];for(var d=0;d<8&&bar&&bar.parentElement;d++){var p=bar.parentElement;var bc=p.querySelectorAll('button,[role=button]').length;var w=p.getBoundingClientRect().width;if(bc>=2||w>520){bar=p;break;}bar=p;}if(!bar)return;bar.setAttribute('data-alter-fixed-actions','1');bar.style.position='fixed';bar.style.left='64px';bar.style.right='18px';bar.style.bottom='calc(env(safe-area-inset-bottom,0px) + 10px)';bar.style.zIndex='2147483647';bar.style.background='rgba(255,255,255,.96)';bar.style.border='1px solid rgba(0,0,0,.10)';bar.style.borderRadius='14px';bar.style.boxShadow='0 8px 28px rgba(0,0,0,.18)';bar.style.padding='10px 12px';bar.style.maxHeight='92px';bar.style.overflow='visible';bar.style.transform='none';bar.style.visibility='visible';bar.style.opacity='1';}catch(e){}}" +
-                        "setInterval(fixActions,900);setTimeout(fixActions,1200);setTimeout(fixActions,3200);}" +
+                        "document.documentElement.style.minWidth=W+'px';document.documentElement.style.width=W+'px';document.documentElement.style.height='auto';document.documentElement.style.overflowX='auto';document.documentElement.style.overflowY='auto';document.documentElement.style.background=bg;" +
+                        "document.body.style.minWidth=W+'px';document.body.style.width=W+'px';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='auto';document.body.style.overflowY='auto';document.body.style.background=bg;document.body.style.paddingBottom='24px';" +
+                        "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:24px!important;}body>div,#__next,#app,[id*=root],[class*=layout],[class*=container]{background:#fff!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "function txt(e){return ((e&&e.innerText)||'').replace(/\s+/g,' ').trim().toLowerCase();}" +
+                        "function css(e,k,v){try{if(e)e.style.setProperty(k,v,'important');}catch(x){}}" +
+                        "function fixUploadChooserCard(){try{" +
+                        "var paneBg='#f3f3f3';" +
+                        "css(document.documentElement,'background','#fff');css(document.body,'background','#fff');" +
+                        "var keys=['выберите видео для загрузки','select video','choose video'];" +
+                        "var nodes=[].slice.call(document.querySelectorAll('div,section,article'));" +
+                        "nodes.forEach(function(n){try{" +
+                        "var t=txt(n);var hit=false;for(var i=0;i<keys.length;i++){if(t.indexOf(keys[i])>=0){hit=true;break;}}if(!hit)return;" +
+                        "var r=n.getBoundingClientRect();if(!r||r.width<120||r.height<60||r.width>700||r.height>420)return;" +
+                        "css(n,'background',paneBg);css(n,'background-color',paneBg);css(n,'box-shadow','none');css(n,'border','0');css(n,'outline','0');" +
+                        "var ch=[].slice.call(n.children||[]);ch.forEach(function(c){var ct=txt(c);if(ct.indexOf('выбрать видео')>=0||ct.indexOf('select video')>=0||ct.indexOf('choose video')>=0){return;}css(c,'background','transparent');css(c,'background-color','transparent');css(c,'box-shadow','none');css(c,'border','0');});" +
+                        "var p=n.parentElement;for(var j=0;j<3&&p;j++){var pr=p.getBoundingClientRect();if(pr&&pr.width>r.width&&pr.height>r.height){css(p,'background',paneBg);css(p,'background-color',paneBg);}p=p.parentElement;}" +
+                        "}catch(x){}});" +
+                        "}catch(x){}}" +
+                        "fixUploadChooserCard();var c=0;var timer=setInterval(function(){fixUploadChooserCard();c++;if(c>40)clearInterval(timer);},120);" +
+                        "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
+                        "}else{" +
+                        "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
+                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
+                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#111';document.body.style.paddingBottom='0';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#111!important;}body>div,#__next,#app{min-height:100vh!important;background:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "}" +
                         "}catch(e){}" +
-                        "})()", null);
-                }
+                        "})()", null);                }
             }
 
             @Override
