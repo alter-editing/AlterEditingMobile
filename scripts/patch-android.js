@@ -662,7 +662,7 @@ public class WebBridge {
 
     @JavascriptInterface
     public String openTikTokUpload(String url) {
-        String target = (url == null || url.trim().isEmpty()) ? "https://www.tiktok.com/tiktokstudio/upload?from=creator_center" : url.trim();
+        String target = (url == null || url.trim().isEmpty()) ? "https://www.tiktok.com/upload/?lang=en" : url.trim();
 
         // Force Microsoft Edge first. This prevents Android from resolving tiktok.com links
         // directly into the TikTok mobile app through App Links / Deep Links.
@@ -838,7 +838,7 @@ import android.graphics.Color;
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
     private static final long SAME_URL_COOLDOWN_MS = 2500L;
-    private static final String DEFAULT_UPLOAD_URL = "https://www.tiktok.com/tiktokstudio/upload?from=creator_center";
+    private static final String DEFAULT_UPLOAD_URL = "https://www.tiktok.com/upload/?lang=en";
     // Do not spoof a Windows desktop browser during login: TikTok can compare UA with Android WebView signals.
     private static final String DESKTOP_USER_AGENT = "";
     private WebView webView;
