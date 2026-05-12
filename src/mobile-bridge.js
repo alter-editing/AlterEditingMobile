@@ -591,7 +591,19 @@ async function checkForAppUpdate() {
 
 async function openUpdateInstall(target) {
   const url = typeof target === 'string' ? target : (target?.apkUrl || target?.releaseUrl || '');
+  const name = typeof target === 'string' ? 'AlterEditingMethod-update.apk' : (target?.apkName || 'AlterEditingMethod-update.apk');
   if (!url) return false;
+
+  // Android: download the APK inside the app and open the system installer immediately.
+  // Opening the GitHub APK URL in Browser often leaves the user with a downloaded file
+  // that cannot be opened from the browser notification. Native install avoids that.
+  try {
+    if (window.AlterUpdate?.installApk) {
+      const result = window.AlterUpdate.installApk(String(url), String(name));
+      if (result === 'OK' || result === 'BUSY') return true;
+    }
+  } catch (_) {}
+
   await Browser.open({ url });
   return true;
 }

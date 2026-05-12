@@ -4,6 +4,7 @@ import path from 'node:path';
 const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 const xmlDir = path.join('android', 'app', 'src', 'main', 'res', 'xml');
 const networkConfigPath = path.join(xmlDir, 'network_security_config.xml');
+const fileProviderPathsPath = path.join(xmlDir, 'file_paths.xml');
 
 if (!fs.existsSync(manifestPath)) {
   throw new Error(`AndroidManifest.xml not found: ${manifestPath}`);
@@ -19,6 +20,15 @@ fs.writeFileSync(networkConfigPath, `<?xml version="1.0" encoding="utf-8"?>
         <domain includeSubdomains="true">83.147.241.28</domain>
     </domain-config>
 </network-security-config>
+`, 'utf8');
+
+fs.writeFileSync(fileProviderPathsPath, `<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <external-files-path name="external_files" path="." />
+    <files-path name="files" path="." />
+</paths>
 `, 'utf8');
 
 let manifest = fs.readFileSync(manifestPath, 'utf8');
@@ -94,6 +104,22 @@ manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
   return `<application${next}>`;
 });
 
+
+if (!manifest.includes('android:name="androidx.core.content.FileProvider"')) {
+  manifest = manifest.replace(
+    '</application>',
+    `    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+    </provider>
+</application>`
+  );
+}
 
 if (!manifest.includes('android:name=".TikTokWebActivity"')) {
   manifest = manifest.replace(
@@ -317,6 +343,7 @@ public class MainActivity extends BridgeActivity {
         getBridge().getWebView().addJavascriptInterface(new KeepAliveBridge(this), "AlterKeepAlive");
         getBridge().getWebView().addJavascriptInterface(new MediaPermissionBridge(this), "AlterMediaPermissions");
         getBridge().getWebView().addJavascriptInterface(new PerformanceBridge(this), "AlterPerformance");
+        getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");
     }
 
     @Override
@@ -641,6 +668,110 @@ public class WebBridge {
         } catch (Exception e) {
             return "ERROR:" + e.getMessage();
         }
+    }
+}
+`, 'utf8');
+
+  fs.writeFileSync(path.join(packageDir, 'UpdateBridge.java'), `package ${packageName};
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import android.webkit.JavascriptInterface;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class UpdateBridge {
+    private final Activity activity;
+    private volatile boolean installing = false;
+
+    public UpdateBridge(Activity activity) {
+        this.activity = activity;
+    }
+
+    @JavascriptInterface
+    public String installApk(String apkUrl, String apkName) {
+        if (apkUrl == null || apkUrl.trim().isEmpty()) return "ERROR:EMPTY_URL";
+        if (installing) return "BUSY";
+        installing = true;
+        final String url = apkUrl.trim();
+        final String name = sanitizeName(apkName == null || apkName.trim().isEmpty() ? "AlterEditingMethod-update.apk" : apkName.trim());
+        new Thread(() -> {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !activity.getPackageManager().canRequestPackageInstalls()) {
+                    Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName()));
+                    settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    activity.startActivity(settingsIntent);
+                    installing = false;
+                    return;
+                }
+                File dir = new File(activity.getExternalCacheDir(), "updates");
+                if (!dir.exists()) dir.mkdirs();
+                File apk = new File(dir, name.endsWith(".apk") ? name : name + ".apk");
+                download(url, apk);
+                activity.runOnUiThread(() -> openInstaller(apk));
+            } catch (Exception e) {
+                installing = false;
+            }
+        }).start();
+        return "OK";
+    }
+
+    private void download(String urlText, File outFile) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(urlText).openConnection();
+        conn.setInstanceFollowRedirects(true);
+        conn.setConnectTimeout(20000);
+        conn.setReadTimeout(60000);
+        conn.setRequestProperty("User-Agent", "AlterEditingMobileUpdater");
+        conn.connect();
+        int code = conn.getResponseCode();
+        if (code >= 300 && code < 400) {
+            String loc = conn.getHeaderField("Location");
+            conn.disconnect();
+            if (loc != null && !loc.isEmpty()) {
+                download(loc, outFile);
+                return;
+            }
+        }
+        if (code < 200 || code >= 300) throw new Exception("HTTP " + code);
+        try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(outFile, false)) {
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+            out.flush();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private void openInstaller(File apk) {
+        try {
+            Uri uri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apk);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(intent);
+        } catch (Exception e) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.fromFile(apk));
+                intent.setDataAndType(Uri.fromFile(apk), "application/vnd.android.package-archive");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(intent);
+            } catch (Exception ignored) {}
+        } finally {
+            installing = false;
+        }
+    }
+
+    private String sanitizeName(String name) {
+        return name.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 }
 `, 'utf8');
