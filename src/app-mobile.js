@@ -481,7 +481,15 @@ function togglePanel(id){
   },260);
 }
 function animateTap(id,cls){const e=$(id);if(!e)return;e.classList.remove(cls);void e.offsetWidth;e.classList.add(cls);setTimeout(()=>e.classList.remove(cls),520);}
-function openTikTokStudio(){markExternalTransition('external',true); window.alterE.shell.openTikTokUpload?.('https://www.tiktok.com/upload'); setTimeout(()=>markExternalTransition('external',false),1200);}
+let tiktokUploadOpenLockedUntil=0;
+function openTikTokStudio(){
+  const now=Date.now();
+  if(now<tiktokUploadOpenLockedUntil){return;}
+  tiktokUploadOpenLockedUntil=now+7000;
+  markExternalTransition('external',true);
+  window.alterE.shell.openTikTokUpload?.('https://www.tiktok.com/upload');
+  setTimeout(()=>markExternalTransition('external',false),1200);
+}
 function openTutorial(show){const e=$('tutorialOverlay');if(!e)return;if(show){e.hidden=false;requestAnimationFrame(()=>e.classList.add('is-visible'));return}e.classList.remove('is-visible');setTimeout(()=>{if(!e.classList.contains('is-visible'))e.hidden=true},240);}
 function cleanUiText(value){
   return String(value ?? '')

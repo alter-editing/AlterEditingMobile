@@ -650,6 +650,7 @@ public class PerformanceBridge {
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.webkit.JavascriptInterface;
 
 public class WebBridge {
@@ -662,11 +663,12 @@ public class WebBridge {
     @JavascriptInterface
     public String openTikTokUpload(String url) {
         try {
-            Intent intent = new Intent(activity, TikTokWebActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            intent.putExtra("url", url == null || url.trim().isEmpty() ? "https://www.tiktok.com/upload" : url);
+            String target = (url == null || url.trim().isEmpty()) ? "https://www.tiktok.com/upload" : url.trim();
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
-            return "OK";
+            return "OK_BROWSER";
         } catch (Exception e) {
             return "ERROR:" + e.getMessage();
         }
@@ -821,7 +823,8 @@ public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
     private static final long SAME_URL_COOLDOWN_MS = 2500L;
     private static final String DEFAULT_UPLOAD_URL = "https://www.tiktok.com/upload";
-    private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
+    // Do not spoof a Windows desktop browser during login: TikTok can compare UA with Android WebView signals.
+    private static final String DESKTOP_USER_AGENT = "";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private String lastRequestedUrl = "";
@@ -867,8 +870,10 @@ public class TikTokWebActivity extends Activity {
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setTextZoom(100);
-        settings.setUserAgentString(DESKTOP_USER_AGENT);
-        webView.setInitialScale(70);
+        if (DESKTOP_USER_AGENT.length() > 0) {
+            settings.setUserAgentString(DESKTOP_USER_AGENT);
+        }
+        webView.setInitialScale(100);
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
