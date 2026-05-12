@@ -713,6 +713,9 @@ public class TikTokWebActivity extends Activity {
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setTextZoom(100);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            settings.setForceDark(WebSettings.FORCE_DARK_OFF);
+        }
         settings.setUserAgentString(DESKTOP_USER_AGENT);
         webView.setInitialScale(70);
 
@@ -765,7 +768,7 @@ public class TikTokWebActivity extends Activity {
                         "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
                         "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='auto';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='';" +
                         "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='';document.body.style.paddingBottom='0';" +
-                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:auto!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:auto!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#fff!important;color:#111!important;color-scheme:light!important;}body>div,#__next,#app,[id*=root]{background:#fff!important;color:#111!important;}button,[role=button]{color:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
