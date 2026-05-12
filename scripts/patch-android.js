@@ -667,7 +667,6 @@ import android.graphics.Color;
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
     private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-    private static final String MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
 
@@ -685,7 +684,7 @@ public class TikTokWebActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        webView.setBackgroundColor(Color.WHITE);
+        webView.setBackgroundColor(Color.BLACK);
         webView.setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY);
         setContentView(webView);
 
@@ -713,12 +712,6 @@ public class TikTokWebActivity extends Activity {
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setTextZoom(100);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            settings.setForceDark(WebSettings.FORCE_DARK_OFF);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            settings.setAlgorithmicDarkeningAllowed(false);
-        }
         settings.setUserAgentString(DESKTOP_USER_AGENT);
         webView.setInitialScale(70);
 
@@ -762,7 +755,10 @@ public class TikTokWebActivity extends Activity {
                         "fixUploadChooserCard();var c=0;var timer=setInterval(function(){fixUploadChooserCard();c++;if(c>40)clearInterval(timer);},120);" +
                         "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
-                        "return;" +
+                        "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
+                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
+                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#111';document.body.style.paddingBottom='0';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#111!important;}body>div,#__next,#app{min-height:100vh!important;background:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
@@ -810,23 +806,17 @@ public class TikTokWebActivity extends Activity {
         if (url == null || url.trim().isEmpty()) {
             url = "https://www.tiktok.com/tiktokstudio/upload";
         }
-        url = forceDesktopTikTokUrl(url);
-        webView.getSettings().setUserAgentString(userAgentForUrl(url));
-        webView.loadUrl(url);
+        webView.loadUrl(forceDesktopTikTokUrl(url));
     }
 
     private boolean handleUrl(WebView view, String url) {
         if (url == null) return false;
         String lower = url.toLowerCase();
-        if (lower.contains("apps.apple.com") || lower.contains("itunes.apple.com") || lower.contains("play.google.com") || lower.contains("/download") || lower.contains("getapp")) {
-            return true;
-        }
         if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
             return true;
         }
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             String forced = forceDesktopTikTokUrl(url);
-            view.getSettings().setUserAgentString(userAgentForUrl(forced));
             if (!forced.equals(url)) {
                 view.loadUrl(forced);
                 return true;
@@ -834,13 +824,6 @@ public class TikTokWebActivity extends Activity {
             return false;
         }
         return true;
-    }
-
-    private String userAgentForUrl(String url) {
-        if (url == null) return DESKTOP_USER_AGENT;
-        String lower = url.toLowerCase();
-        boolean isStudio = (lower.contains("tiktokstudio") || lower.contains("/creator-center/upload") || lower.contains("/upload")) && !lower.contains("/login");
-        return isStudio ? DESKTOP_USER_AGENT : MOBILE_USER_AGENT;
     }
 
     private String forceDesktopTikTokUrl(String url) {
