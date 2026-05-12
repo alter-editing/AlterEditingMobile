@@ -367,7 +367,7 @@ function buildUpdatePrompt(info){
     setTimeout(()=>overlay.remove(),220);
   });
   overlay.querySelector('#updateInstallButton')?.addEventListener('click',async()=>{
-    try{ await window.alterE?.update?.install?.(info); }catch(_){ if(info?.releaseUrl) await window.alterE?.shell?.openExternal?.(info.releaseUrl); }
+    try{ const ok=await window.alterE?.update?.install?.(info); if(!ok) toast(t('failed'),'Не удалось открыть установщик обновления.'); }catch(e){ toast(t('failed'),String(e?.message||e)); }
   });
 }
 

@@ -4,6 +4,7 @@ import path from 'node:path';
 const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 const xmlDir = path.join('android', 'app', 'src', 'main', 'res', 'xml');
 const networkConfigPath = path.join(xmlDir, 'network_security_config.xml');
+const fileProviderPathsPath = path.join(xmlDir, 'file_paths.xml');
 
 if (!fs.existsSync(manifestPath)) {
   throw new Error(`AndroidManifest.xml not found: ${manifestPath}`);
@@ -19,6 +20,15 @@ fs.writeFileSync(networkConfigPath, `<?xml version="1.0" encoding="utf-8"?>
         <domain includeSubdomains="true">83.147.241.28</domain>
     </domain-config>
 </network-security-config>
+`, 'utf8');
+
+fs.writeFileSync(fileProviderPathsPath, `<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <external-files-path name="external_files" path="." />
+    <files-path name="files" path="." />
+</paths>
 `, 'utf8');
 
 let manifest = fs.readFileSync(manifestPath, 'utf8');
@@ -94,6 +104,23 @@ manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
   return `<application${next}>`;
 });
 
+
+
+if (!manifest.includes('android:name="androidx.core.content.FileProvider"')) {
+  manifest = manifest.replace(
+    '</application>',
+    `    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+    </provider>
+</application>`
+  );
+}
 
 if (!manifest.includes('android:name=".TikTokWebActivity"')) {
   manifest = manifest.replace(
@@ -317,6 +344,7 @@ public class MainActivity extends BridgeActivity {
         getBridge().getWebView().addJavascriptInterface(new KeepAliveBridge(this), "AlterKeepAlive");
         getBridge().getWebView().addJavascriptInterface(new MediaPermissionBridge(this), "AlterMediaPermissions");
         getBridge().getWebView().addJavascriptInterface(new PerformanceBridge(this), "AlterPerformance");
+        getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");
     }
 
     @Override
@@ -645,6 +673,130 @@ public class WebBridge {
 }
 `, 'utf8');
 
+
+  fs.writeFileSync(path.join(packageDir, 'UpdateBridge.java'), `package ${packageName};
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import android.webkit.JavascriptInterface;
+import android.widget.Toast;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class UpdateBridge {
+    private final Activity activity;
+    private volatile boolean installing = false;
+
+    public UpdateBridge(Activity activity) {
+        this.activity = activity;
+    }
+
+    @JavascriptInterface
+    public String installApk(String apkUrl, String apkName) {
+        if (apkUrl == null || apkUrl.trim().isEmpty()) return "ERROR:EMPTY_URL";
+        if (installing) return "BUSY";
+        installing = true;
+        final String url = apkUrl.trim();
+        final String name = sanitizeName(apkName == null || apkName.trim().isEmpty() ? "AlterEditingMethod-update.apk" : apkName.trim());
+        toast("Скачиваем обновление...");
+        new Thread(() -> {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !activity.getPackageManager().canRequestPackageInstalls()) {
+                    installing = false;
+                    toast("Разрешите установку из этого приложения и нажмите обновление ещё раз");
+                    Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName()));
+                    settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    activity.startActivity(settingsIntent);
+                    return;
+                }
+                File dir = new File(activity.getCacheDir(), "updates");
+                if (!dir.exists()) dir.mkdirs();
+                File apk = new File(dir, name.endsWith(".apk") ? name : name + ".apk");
+                download(url, apk);
+                if (!apk.exists() || apk.length() < 1024) throw new Exception("Downloaded APK is empty");
+                activity.runOnUiThread(() -> openInstaller(apk));
+            } catch (Exception e) {
+                installing = false;
+                toast("Не удалось скачать или открыть APK: " + e.getMessage());
+            }
+        }).start();
+        return "OK";
+    }
+
+    private void download(String urlText, File outFile) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(urlText).openConnection();
+        conn.setInstanceFollowRedirects(false);
+        conn.setConnectTimeout(20000);
+        conn.setReadTimeout(120000);
+        conn.setRequestProperty("User-Agent", "AlterEditingMobileUpdater");
+        conn.setRequestProperty("Accept", "application/octet-stream,*/*");
+        conn.connect();
+        int code = conn.getResponseCode();
+        if (code >= 300 && code < 400) {
+            String loc = conn.getHeaderField("Location");
+            conn.disconnect();
+            if (loc != null && !loc.isEmpty()) {
+                download(loc, outFile);
+                return;
+            }
+        }
+        if (code < 200 || code >= 300) throw new Exception("HTTP " + code);
+        try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(outFile, false)) {
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+            out.flush();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private void openInstaller(File apk) {
+        try {
+            installing = false;
+            Uri uri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apk);
+            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            intent.setData(uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+            intent.putExtra(Intent.EXTRA_RETURN_RESULT, false);
+            activity.startActivity(intent);
+        } catch (Exception first) {
+            try {
+                Uri uri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apk);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(intent);
+            } catch (Exception second) {
+                toast("Не удалось открыть установщик APK");
+            } finally {
+                installing = false;
+            }
+        }
+    }
+
+    private String sanitizeName(String name) {
+        return name.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    private void toast(String text) {
+        try {
+            activity.runOnUiThread(() -> Toast.makeText(activity, text, Toast.LENGTH_LONG).show());
+        } catch (Exception ignored) {}
+    }
+}
+`, 'utf8');
+
   fs.writeFileSync(path.join(packageDir, 'TikTokWebActivity.java'), `package ${packageName};
 
 import android.app.Activity;
@@ -667,6 +819,7 @@ import android.graphics.Color;
 public class TikTokWebActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 2417;
     private static final String DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+    private static final String MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
 
@@ -720,6 +873,12 @@ public class TikTokWebActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                configureForUrl(url);
+                super.onPageStarted(view, url, favicon);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (url != null && url.toLowerCase().contains("tiktok.com")) {
@@ -736,7 +895,7 @@ public class TikTokWebActivity extends Activity {
                         "m.content='width='+W+', initial-scale=1, maximum-scale=4, minimum-scale=0.25, user-scalable=yes';" +
                         "document.documentElement.style.minWidth=W+'px';document.documentElement.style.width=W+'px';document.documentElement.style.height='auto';document.documentElement.style.overflowX='auto';document.documentElement.style.overflowY='auto';document.documentElement.style.background=bg;" +
                         "document.body.style.minWidth=W+'px';document.body.style.width=W+'px';document.body.style.height='auto';document.body.style.minHeight='100vh';document.body.style.overflowX='auto';document.body.style.overflowY='auto';document.body.style.background=bg;document.body.style.paddingBottom='24px';" +
-                        "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:24px!important;}body>div,#__next,#app,[id*=root],[class*=layout],[class*=container]{background:#fff!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "st.textContent='html,body{min-width:1280px!important;width:1280px!important;height:auto!important;min-height:100vh!important;overflow-x:auto!important;overflow-y:auto!important;background:#fff!important;}body{padding-bottom:24px!important;}body>div,#__next,#app,[id*=root],[class*=layout],[class*=container]{background:#fff!important;}*{-webkit-text-size-adjust:100%!important;}html,body{color-scheme:light!important;}';" +
                         "function txt(e){return ((e&&e.innerText)||'').replace(/\s+/g,' ').trim().toLowerCase();}" +
                         "function css(e,k,v){try{if(e)e.style.setProperty(k,v,'important');}catch(x){}}" +
                         "function fixUploadChooserCard(){try{" +
@@ -756,9 +915,9 @@ public class TikTokWebActivity extends Activity {
                         "setTimeout(fixUploadChooserCard,400);setTimeout(fixUploadChooserCard,1000);setTimeout(fixUploadChooserCard,2200);setTimeout(fixUploadChooserCard,5000);" +
                         "}else{" +
                         "m.content='width=device-width, initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=yes, viewport-fit=cover';" +
-                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#111';" +
-                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#111';document.body.style.paddingBottom='0';" +
-                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#111!important;}body>div,#__next,#app{min-height:100vh!important;background:#111!important;}*{-webkit-text-size-adjust:100%!important;}';" +
+                        "document.documentElement.style.minWidth='0';document.documentElement.style.width='100%';document.documentElement.style.height='100%';document.documentElement.style.minHeight='100%';document.documentElement.style.overflowX='hidden';document.documentElement.style.overflowY='auto';document.documentElement.style.background='#fff';" +
+                        "document.body.style.minWidth='0';document.body.style.width='100%';document.body.style.height='100%';document.body.style.minHeight='100vh';document.body.style.overflowX='hidden';document.body.style.overflowY='auto';document.body.style.background='#fff';document.body.style.paddingBottom='0';" +
+                        "st.textContent='html,body{min-width:0!important;width:100%!important;height:100%!important;min-height:100vh!important;overflow-x:hidden!important;overflow-y:auto!important;background:#fff!important;}body>div,#__next,#app{min-height:100vh!important;background:#fff!important;}*{-webkit-text-size-adjust:100%!important;}html,body{color-scheme:light!important;}';" +
                         "}" +
                         "}catch(e){}" +
                         "})()", null);                }
@@ -806,13 +965,30 @@ public class TikTokWebActivity extends Activity {
         if (url == null || url.trim().isEmpty()) {
             url = "https://www.tiktok.com/tiktokstudio/upload";
         }
-        webView.loadUrl(forceDesktopTikTokUrl(url));
+        String startUrl = forceDesktopTikTokUrl(url);
+        configureForUrl(startUrl);
+        webView.loadUrl(startUrl);
+    }
+
+    private void configureForUrl(String url) {
+        if (webView == null) return;
+        try {
+            String lower = url == null ? "" : url.toLowerCase();
+            boolean isStudio = lower.contains("tiktokstudio") || lower.contains("/creator-center/upload") || lower.contains("/upload");
+            boolean isLogin = lower.contains("/login") || lower.contains("login") || lower.contains("passport") || lower.contains("accounts.google.com") || lower.contains("facebook.com") || lower.contains("appleid.apple.com");
+            WebSettings s = webView.getSettings();
+            s.setUserAgentString((isStudio && !isLogin) ? DESKTOP_USER_AGENT : MOBILE_USER_AGENT);
+        } catch (Exception ignored) {}
     }
 
     private boolean handleUrl(WebView view, String url) {
         if (url == null) return false;
+        configureForUrl(url);
         String lower = url.toLowerCase();
         if (lower.startsWith("intent:") || lower.startsWith("snssdk") || lower.startsWith("tiktok://")) {
+            return true;
+        }
+        if (lower.contains("apps.apple.com") || lower.contains("itunes.apple.com") || lower.contains("play.google.com") || lower.contains("/download")) {
             return true;
         }
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
