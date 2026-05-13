@@ -321,30 +321,47 @@ function authResultIsPositive(result) {
   return !negativeStatus && (positiveStatus || positiveFlag);
 }
 
-async function getAuthStatus(token) {
+async function getAuthStatus(token, options = {}) {
   if (!token) throw new Error('missing_auth_token');
   const safe = encodeURIComponent(token);
+  const allowSessionFallback = options?.allowSessionFallback === true || options?.mode === 'poll';
 
-  // STRICT MODE:
-  // Only /auth/status is allowed to decide access after app start/resume.
-  // Do not use /auth/session here: that endpoint can keep returning an old
-  // successful session even after the user unsubscribed from the Telegram channel.
-  let result = null;
+  // Live channel check. This is the only endpoint allowed to keep a saved user
+  // inside the app on startup/resume, because /auth/session can still confirm
+  // an old login after the user leaves the Telegram channel.
   try {
-    result = await tryFetch(`/auth/status/${safe}`);
+    const result = await tryFetch(`/auth/status/${safe}`);
+    if (authResultHasHardReject(result)) {
+      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
+    }
+    if (authResultIsPositive(result)) {
+      return { ...(result || {}), authorized: true, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'authorized' };
+    }
+
+    // During fresh Telegram login some servers confirm the temporary auth
+    // session only through /auth/session. Allow that fallback only while polling
+    // a newly created session, never for automatic app startup access.
+    if (!allowSessionFallback) {
+      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
+    }
   } catch (e) {
-    return { authorized: false, status: 'status_unavailable', error: String(e?.message || e) };
+    if (!allowSessionFallback) {
+      return { authorized: false, status: 'status_unavailable', error: String(e?.message || e) };
+    }
   }
 
-  if (authResultHasHardReject(result)) {
-    return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
+  try {
+    const sessionResult = await tryFetch(`/auth/session/${safe}`);
+    if (authResultHasHardReject(sessionResult)) {
+      return { ...(sessionResult || {}), authorized: false, status: sessionResult?.status || sessionResult?.state || sessionResult?.data?.status || sessionResult?.data?.state || 'not_subscribed' };
+    }
+    if (authResultIsPositive(sessionResult)) {
+      return { ...(sessionResult || {}), authorized: true, status: sessionResult?.status || sessionResult?.state || sessionResult?.data?.status || sessionResult?.data?.state || 'authorized' };
+    }
+    return { ...(sessionResult || {}), authorized: false, status: sessionResult?.status || sessionResult?.state || sessionResult?.data?.status || sessionResult?.data?.state || 'pending' };
+  } catch (e) {
+    return { authorized: false, status: 'pending', error: String(e?.message || e) };
   }
-
-  if (authResultIsPositive(result)) {
-    return { ...(result || {}), authorized: true, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'authorized' };
-  }
-
-  return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
 }
 
 function findElstPatchOffset(bytes) {

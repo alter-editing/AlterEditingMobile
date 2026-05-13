@@ -375,7 +375,7 @@ async function pollAuthorization(token,{silent=false}={}){
       // stale after the user unsubscribed, so every success must come from the
       // live server status below.
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
-      const st=await window.alterE.auth.status(token).catch(()=>null);
+      const st=await window.alterE.auth.status(token, {allowSessionFallback:true, mode:'poll'}).catch(()=>null);
       if(isServerAuthorized(st)){
         await completeAuthorization(token);
         return true;
@@ -683,6 +683,7 @@ async function clearStaleAuthProgress(){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
+      pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();
@@ -922,6 +923,7 @@ async function authorize(){
       authorized:false,
       authToken:'',
       pendingAuthToken:token,
+      pendingAuthStartedAt:Date.now(),
       authInProgress:true,
       authStartedAt:Date.now()
     });
@@ -938,6 +940,7 @@ async function authorize(){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
+      pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();
