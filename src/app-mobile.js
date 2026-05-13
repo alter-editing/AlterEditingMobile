@@ -2,8 +2,8 @@ const $ = id => document.getElementById(id);
 
 const i18n = {
   en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Drag a file here or tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'The video is recorded in an incorrect MP4 container. Please transcode it or render it through CapCut or another convenient app.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Brave will open. If Brave is not installed, Google Play will open so you can install it. Follow the screenshot below after opening Brave.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Brave',desktopUploadCancel:'Cancel'},
-  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Видео записано в неправильном контейнере mp4. Пожалуйста, перекодируйте его или зарендерите его через CapCut или другое удобное приложение.',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
-  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Video yanlış MP4 konteynerinde kaydedilmiş. Lütfen videoyu CapCut veya başka uygun bir uygulama ile yeniden kodlayın/render alın.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
+  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Видео записано в неправильном контейнере mp4. Пожалуйста, перекодируйте его или зарендерите его через CapCut или другое удобное приложение',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
+  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Video yanlış MP4 konteynerinde kaydedilmiş. Lütfen CapCut veya başka uygun bir uygulama ile yeniden kodlayın ya da render alın.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
 };
 
 const state = { settings:null, file:null, fileUrl:'', working:false, logs:[], filePickerActive:false, externalAuthActive:false };
@@ -22,13 +22,10 @@ const VISUAL_RUNTIME = {
 };
 const AUTH_POLL_MAX_MS = 90 * 1000;
 const AUTH_POLL_INTERVAL_MS = 2500;
-const AUTH_STARTUP_CHECK_TIMEOUT_MS = 7000;
-const AUTH_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 let authPollActive = false;
 let authClickLockedUntil = 0;
 let authTapInProgress = false;
 let lastLifecycleResumeAt = 0;
-let lastAuthTapEventAt = 0;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
 let fileInput;
 
@@ -112,72 +109,54 @@ function isServerAuthorized(st){
     || ['pending','waiting','created','new','requested','unauthorized','not_authorized','denied','expired','false','error'].includes(nestedStatus);
   return !negativeStatus && (positiveStatus || positiveFlag);
 }
-
-function isAuthExplicitlyRejected(st){
-  if(!st || typeof st !== 'object') return false;
-  const values = [
-    st.status, st.state, st.result, st.reason, st.error, st.code,
-    st.data?.status, st.data?.state, st.data?.result, st.data?.reason, st.data?.error, st.data?.code
-  ].map(v=>String(v||'').toLowerCase());
-  const hardReject = ['blocked','banned','ban','not_subscribed','not_subscriber','unsubscribed','not_member','left','kicked','denied','forbidden','blacklisted','revoked'];
-  if(values.some(v=>hardReject.includes(v) || hardReject.some(x=>v.includes(x)))) return true;
-  if(st.blocked === true || st.banned === true || st.blacklisted === true) return true;
-  if(st.subscribed === false || st.member === false || st.allowed === false) return true;
-  if(st.data?.blocked === true || st.data?.banned === true || st.data?.blacklisted === true) return true;
-  if(st.data?.subscribed === false || st.data?.member === false || st.data?.allowed === false) return true;
-  return false;
-}
-
-
-function extractAuthIdentity(st){
-  if(!st || typeof st !== 'object') return {};
-  const data = st.data && typeof st.data === 'object' ? st.data : {};
-  const user = data.user && typeof data.user === 'object' ? data.user : (st.user && typeof st.user === 'object' ? st.user : {});
-  const telegram = data.telegram && typeof data.telegram === 'object' ? data.telegram : (st.telegram && typeof st.telegram === 'object' ? st.telegram : {});
-  const telegramUserId = String(
-    st.telegram_user_id || st.telegramUserId || st.tg_id || st.tgId || st.telegram_id || st.telegramId ||
-    data.telegram_user_id || data.telegramUserId || data.tg_id || data.tgId || data.telegram_id || data.telegramId ||
-    user.telegram_user_id || user.telegramUserId || user.tg_id || user.tgId || user.telegram_id || user.telegramId || user.id ||
-    telegram.user_id || telegram.userId || telegram.id || ''
-  ).trim();
-  const authUserId = String(
-    st.user_id || st.userId || st.member_id || st.memberId || st.id ||
-    data.user_id || data.userId || data.member_id || data.memberId || data.id ||
-    user.user_id || user.userId || user.member_id || user.memberId || ''
-  ).trim();
-  return { telegramUserId, authUserId };
-}
-
-function uniqueAuthCheckKeys(settings){
-  // Security rule: the client must never use Telegram ID / user ID as proof of access.
-  // A Telegram ID can be typed, copied, or modified on a rooted device. Only the
-  // server-issued auth token/session is allowed to identify the user.
-  const token = String(settings?.authToken || '').trim();
-  return token ? [token] : [];
-}
-
-async function liveStatusForStoredAuth(settings){
-  const token = String(settings?.authToken || '').trim();
-  if(!token) return {authorized:false,status:'missing_auth_token'};
-
-  // Startup/resume check must ask the backend who owns this token and whether
-  // that Telegram account is still subscribed. The client does not send any
-  // telegramUserId/authUserId here, so another person cannot pass by writing an ID.
-  return await window.alterE.auth.status(token, {mode:'startup', allowSessionFallback:false})
-    .catch(e=>({authorized:false,status:'status_unavailable',error:String(e?.message||e)}));
-}
-
-function withTimeout(promise, ms, fallback=null){
-  return new Promise(resolve=>{
-    let done=false;
-    const timer=setTimeout(()=>{ if(!done){ done=true; resolve(fallback); } }, ms);
-    Promise.resolve(promise).then(v=>{ if(!done){ done=true; clearTimeout(timer); resolve(v); } }).catch(e=>{ if(!done){ done=true; clearTimeout(timer); resolve(fallback ?? {error:String(e?.message||e)}); } });
-  });
-}
 function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function fmt(bytes){if(!bytes)return '-';const mb=bytes/1024/1024;return `${mb.toFixed(mb>=100?0:1)} MB`;}
 function isVideoTooLarge(file){return Boolean(file && Number(file.size) > MAX_ACCEPTED_VIDEO_BYTES);}
 function showTooLargeToast(){toast(t('failed'),t('videoTooLarge'));}
+
+async function readFileHeaderBytes(file, start, length){
+  const buf = await file.slice(start, Math.min(file.size, start + length)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+function atomTypeFromHeader(bytes, offset=4){
+  return String.fromCharCode(bytes[offset]||0, bytes[offset+1]||0, bytes[offset+2]||0, bytes[offset+3]||0);
+}
+async function hasValidMp4MovStructure(file){
+  if(!file || !file.size || file.size < 24) return false;
+  let offset = 0;
+  let foundFtyp = false;
+  let foundMoov = false;
+  let foundMdat = false;
+  let boxes = 0;
+  while(offset + 8 <= file.size && boxes < 4096){
+    boxes += 1;
+    const head = await readFileHeaderBytes(file, offset, 16).catch(()=>null);
+    if(!head || head.length < 8) return false;
+    const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
+    let size = view.getUint32(0, false);
+    const type = atomTypeFromHeader(head, 4);
+    if(type === 'ftyp') foundFtyp = true;
+    if(type === 'moov') foundMoov = true;
+    if(type === 'mdat') foundMdat = true;
+    if(size === 1){
+      if(head.length < 16) return false;
+      const high = view.getUint32(8, false);
+      const low = view.getUint32(12, false);
+      size = high * 4294967296 + low;
+    }else if(size === 0){
+      if(type === 'mdat') foundMdat = true;
+      break;
+    }
+    if(!type || /[^A-Za-z0-9 _-]/.test(type) || !Number.isFinite(size) || size < 8) return false;
+    offset += size;
+    if(foundFtyp && foundMoov && foundMdat) return true;
+  }
+  return Boolean(foundFtyp && foundMoov && foundMdat);
+}
+function showInvalidMp4MovToast(fileName=''){
+  toast(t('failed'), t('unsupportedPatchFormat'));
+  log('error','unsupportedPatchFormat',fileName);
+}
 function resetFilePicker(){
   if(fileInput){
     try{fileInput.value='';}catch(_){fileInput.type='text';fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';}
@@ -386,48 +365,8 @@ async function savePendingAuth(token,url){
   state.settings=await window.alterE.settings.update({pendingAuthToken:token,pendingAuthUrl:url||'',pendingAuthStartedAt:nowMs(),authInProgress:true});
   return state.settings;
 }
-
-async function prepareFreshAuthSessionAfterReject(){
-  try{
-    const session=await window.alterE.auth.createSession();
-    const token=session?.session_token || session?.token || '';
-    const url=session?.auth_url || session?.telegram_url || session?.url || '';
-    if(!token) throw new Error('auth_session_not_created');
-    state.settings=await window.alterE.settings.update({
-      authorized:false,
-      authToken:'',
-      telegramUserId:'',
-      authUserId:'',
-      lastAuthVerifiedAt:0,
-      pendingAuthToken:token,
-      pendingAuthUrl:url,
-      pendingAuthStartedAt:nowMs(),
-      authInProgress:true,
-      authStartedAt:nowMs()
-    });
-    saveUiSnapshotSoon?.();
-    return true;
-  }catch(_){
-    state.settings=await window.alterE.settings.update({
-      authorized:false,
-      authToken:'',
-      telegramUserId:'',
-      authUserId:'',
-      lastAuthVerifiedAt:0,
-      pendingAuthToken:'',
-      pendingAuthUrl:'',
-      pendingAuthStartedAt:0,
-      authInProgress:false,
-      authStartedAt:0
-    }).catch(()=>({...state.settings,authorized:false,authToken:''}));
-    return false;
-  }
-}
-async function completeAuthorization(token, serverStatus=null){
-  const verifiedAt=nowMs();
-  const identity=extractAuthIdentity(serverStatus);
-  localStorage.setItem('alter_last_auth_verified_at', String(verifiedAt));
-  state.settings=await clearPendingAuth({authorized:true,authToken:token,telegramUserId:'',authUserId:'',lastAuthVerifiedAt:verifiedAt});
+async function completeAuthorization(token){
+  state.settings=await clearPendingAuth({authorized:true,authToken:token});
   state.logs=[];
   state.externalAuthActive=false;
   document.body.classList.remove('is-external-transition');
@@ -448,13 +387,11 @@ async function pollAuthorization(token,{silent=false}={}){
     const started=nowMs();
     while(nowMs()-started < AUTH_POLL_MAX_MS){
       const fresh=await window.alterE.settings.get().catch(()=>state.settings);
-      // Never trust the local authorized flag while polling. A saved flag can be
-      // stale after the user unsubscribed, so every success must come from the
-      // live server status below.
+      if(fresh?.authorized) { state.settings=fresh; state.externalAuthActive=false; document.body.classList.remove('is-external-transition'); renderAuth(); saveUiSnapshot(); return true; }
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
-      const st=await window.alterE.auth.status(token, {allowSessionFallback:true, mode:'poll'}).catch(()=>null);
+      const st=await window.alterE.auth.status(token).catch(()=>null);
       if(isServerAuthorized(st)){
-        await completeAuthorization(token, st);
+        await completeAuthorization(token);
         return true;
       }
       await new Promise(r=>setTimeout(r,AUTH_POLL_INTERVAL_MS));
@@ -470,9 +407,6 @@ async function resumeAppState(){
   if(stamp-lastLifecycleResumeAt<800) return;
   lastLifecycleResumeAt=stamp;
   state.settings=await window.alterE.settings.get().catch(()=>state.settings);
-  if(state.settings?.authorized && state.settings?.authToken){
-    await validateStoredAuthorization({force:true, startup:false});
-  }
   PERF.nativeProfile=await window.alterE?.performance?.profile?.().catch(()=>PERF.nativeProfile) || PERF.nativeProfile;
   document.body.dataset.theme=state.settings?.theme||'dark';
   document.documentElement.dataset.theme=state.settings?.theme||'dark';
@@ -564,9 +498,7 @@ async function init(){
   particles();
   fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';fileInput.hidden=true;document.body.appendChild(fileInput);
   fileInput.addEventListener('change',()=>{const f=fileInput.files?.[0];markExternalTransition('file',false);if(f)handleFile(f);else saveUiSnapshotSoon();});
-  bind();bindLifecycleResume();applyText();
-  await validateStoredAuthorization({force:true, startup:true});
-  renderAuth();renderVideo();renderLogs();
+  bind();bindLifecycleResume();applyText();await validateStoredAuthorization();renderAuth();renderVideo();renderLogs();
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){pollAuthorization(state.settings.pendingAuthToken,{silent:true});}
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
   if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
@@ -574,14 +506,15 @@ async function init(){
 }
 
 
+let lastAuthButtonEventAt = 0;
 function hardAuthTapHandler(event){
   try{
     event?.preventDefault?.();
     event?.stopPropagation?.();
   }catch(_){}
   const stamp = Date.now();
-  if(stamp - lastAuthTapEventAt < 700) return;
-  lastAuthTapEventAt = stamp;
+  if(stamp - lastAuthButtonEventAt < 700) return;
+  lastAuthButtonEventAt = stamp;
   playAuthButtonAnimation();
   resetAuthButtonState();
   authorize();
@@ -592,13 +525,15 @@ function bindAuthOverlaySafety(){
   const overlay = $('authOverlay');
   const btn = $('authButton');
   if(!overlay || !btn) return;
-  overlay.addEventListener('click', e=>{
+  overlay.addEventListener('touchend', e=>{
+    if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
+  }, {passive:false});
+  overlay.addEventListener('pointerup', e=>{
     if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
   }, {passive:false});
 }
 
 function bind(){
-  bindAuthOverlaySafety();
   $('dropZone')?.addEventListener('click',openVideoPicker);
   $('dropZone')?.addEventListener('dragover',e=>{e.preventDefault();$('dropZone').classList.add('is-dragover')});
   $('dropZone')?.addEventListener('dragleave',()=>$('dropZone').classList.remove('is-dragover'));
@@ -615,7 +550,7 @@ function bind(){
   $('languageButton')?.addEventListener('click',switchLanguage);
   $('themeButton')?.addEventListener('click',switchTheme);
   $('performanceButton')?.addEventListener('click',cyclePerformanceMode);
-  $('logoutButton')?.addEventListener('click',async()=>{localStorage.removeItem('alter_last_auth_verified_at');state.settings=await window.alterE.settings.update({authorized:false,authToken:'',telegramUserId:'',authUserId:'',lastAuthVerifiedAt:0});renderAuth()});
+  $('logoutButton')?.addEventListener('click',async()=>{state.settings=await window.alterE.settings.update({authorized:false,authToken:''});renderAuth()});
   {
     const authBtn = $('authButton');
     if(authBtn){
@@ -760,7 +695,6 @@ async function clearStaleAuthProgress(){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
-      pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();
@@ -768,78 +702,14 @@ async function clearStaleAuthProgress(){
   resetAuthButtonState();
 }
 
-async function validateStoredAuthorization({force=false, startup=false}={}){
-  if(!state.settings?.authorized || !uniqueAuthCheckKeys(state.settings).length) return false;
-
-  const last=Number(state.settings?.lastAuthVerifiedAt || localStorage.getItem('alter_last_auth_verified_at') || 0);
-  // On cold startup the app must always ask the server again. The local
-  // flag only stores the Telegram token; it must never decide channel access.
-  if(!force && !startup && last && nowMs()-last < AUTH_RECHECK_INTERVAL_MS){
-    return true;
+async function validateStoredAuthorization(){
+  const token=state.settings?.authToken||'';
+  if(!state.settings?.authorized||!token)return;
+  const st=await window.alterE.auth.status(token).catch(()=>null);
+  const ok=isServerAuthorized(st);
+  if(!ok){
+    state.settings=await window.alterE.settings.update({authorized:false,authToken:''});
   }
-
-  const request=liveStatusForStoredAuth(state.settings).catch(e=>({ error:String(e?.message||e), status:'unknown' }));
-  const st=startup ? await withTimeout(request, AUTH_STARTUP_CHECK_TIMEOUT_MS, {status:'timeout'}) : await request;
-
-  if(isServerAuthorized(st)){
-    const verifiedAt=nowMs();
-    localStorage.setItem('alter_last_auth_verified_at', String(verifiedAt));
-    state.settings=await window.alterE.settings.update({
-      authorized:true,
-      authToken:state.settings?.authToken||'',
-      telegramUserId:'',
-      authUserId:'',
-      lastAuthVerifiedAt:verifiedAt,
-      authInProgress:false,
-      pendingAuthToken:'',
-      pendingAuthUrl:'',
-      pendingAuthStartedAt:0,
-      authStartedAt:0
-    }).catch(()=>({...state.settings,lastAuthVerifiedAt:verifiedAt}));
-    return true;
-  }
-
-  // During application startup a saved local authorization is not enough.
-  // If the server did not explicitly confirm membership, keep the saved token
-  // but lock the UI until the user passes Telegram verification again. This
-  // prevents unsubscribed users from entering with an old local cache.
-  if(startup && !isServerAuthorized(st)){
-    localStorage.removeItem('alter_last_auth_verified_at');
-
-    // If the live backend says the user is no longer subscribed / token is no
-    // longer valid, remove the old token immediately and prepare a new Telegram
-    // auth session. This gives the app a fresh authorization token instead of
-    // reusing the stale one.
-    if(isAuthExplicitlyRejected(st)){
-      await prepareFreshAuthSessionAfterReject();
-      return false;
-    }
-
-    // Unknown/temporary server states must not be treated as a valid login, but
-    // also should not destroy the stored token. The UI stays locked until the
-    // server gives an explicit membership confirmation.
-    state.settings=await window.alterE.settings.update({
-      authorized:false,
-      authInProgress:false,
-      pendingAuthToken:'',
-      pendingAuthUrl:'',
-      pendingAuthStartedAt:0,
-      authStartedAt:0,
-      lastAuthVerifiedAt:0
-    }).catch(()=>({...state.settings,authorized:false,lastAuthVerifiedAt:0}));
-    return false;
-  }
-
-  // Do not force Telegram login again on soft/temporary states during normal
-  // in-app resume checks. Lock only on explicit server denial: not subscribed,
-  // blocked, banned, denied, etc.
-  if(isAuthExplicitlyRejected(st)){
-    localStorage.removeItem('alter_last_auth_verified_at');
-    await prepareFreshAuthSessionAfterReject();
-    return false;
-  }
-
-  return true;
 }
 
 function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);resetAuthButtonState();}
@@ -935,22 +805,10 @@ async function handleFile(file){
   const ext=file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
   if(!['.mp4','.mov'].includes(ext)){toast(t('unsupported'));resetFilePicker();markExternalTransition('file',false);return}
   if(isVideoTooLarge(file)){showTooLargeToast();log('error','videoTooLarge',file.name);resetFilePicker();markExternalTransition('file',false);return}
+  const validContainer = await hasValidMp4MovStructure(file).catch(()=>false);
+  if(!validContainer){showInvalidMp4MovToast(file.name);resetFilePicker();markExternalTransition('file',false);return}
   state.file=file;
   state.fileUrl=window.alterMobile.setSelectedFile(file);
-  try{
-    await window.alterE?.video?.validateContainer?.();
-  }catch(e){
-    const raw=String(e?.message||e);
-    state.file=null;
-    state.fileUrl=window.alterMobile.setSelectedFile(null);
-    resetFilePicker();
-    renderVideo();
-    markExternalTransition('file',false);
-    const m=/not supported for patching|format is not supported|incorrect mp4 container|invalid mp4|missing required mp4 boxes/i.test(raw)?t('unsupportedPatchFormat'):raw;
-    toast(t('failed'),m);
-    log('error','failed',m);
-    return;
-  }
   resetFilePicker();
   renderVideo();
   saveUiSnapshot();
@@ -961,6 +819,8 @@ async function patch(){
   if(state.working)return;
   if(!state.file){toast(t('noVideo'));return}
   if(isVideoTooLarge(state.file)){showTooLargeToast();log('error','videoTooLarge',state.file.name);return}
+  const validContainer = await hasValidMp4MovStructure(state.file).catch(()=>false);
+  if(!validContainer){showInvalidMp4MovToast(state.file.name);return}
   try{
     state.working=true;
     document.body.classList.add('is-external-transition');
@@ -973,7 +833,7 @@ async function patch(){
     log('success','saved',r.outputPath);
   }catch(e){
     const raw=String(e?.message||e);
-    const m=/not supported for patching|format is not supported|incorrect mp4 container|invalid mp4|missing required mp4 boxes/i.test(raw)?t('unsupportedPatchFormat'):raw;
+    const m=/not supported for patching|format is not supported|invalid mp4|moov|mdat|ftyp|container/i.test(raw)?t('unsupportedPatchFormat'):raw;
     toast(t('failed'),m);
     log('error','failed',m);
   }finally{
@@ -1006,7 +866,6 @@ async function authorize(){
       authorized:false,
       authToken:'',
       pendingAuthToken:token,
-      pendingAuthStartedAt:Date.now(),
       authInProgress:true,
       authStartedAt:Date.now()
     });
@@ -1023,7 +882,6 @@ async function authorize(){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
-      pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();

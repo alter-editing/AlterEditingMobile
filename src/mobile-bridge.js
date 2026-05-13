@@ -23,45 +23,6 @@ const appStateCallbacks = new Set();
 const emitProgress = value => { for (const cb of progressCallbacks) cb(value); };
 const extOf = (name = '') => { const i = name.lastIndexOf('.'); return i >= 0 ? name.slice(i).toLowerCase() : ''; };
 
-const MP4_BOX_FTYP = [0x66, 0x74, 0x79, 0x70];
-const MP4_BOX_MOOV = [0x6d, 0x6f, 0x6f, 0x76];
-const MP4_BOX_MDAT = [0x6d, 0x64, 0x61, 0x74];
-
-function hasSignature(bytes, signature) {
-  return findSignatureInBytes(bytes, signature) >= 0;
-}
-
-async function validateMp4Container(file) {
-  if (!file) throw new Error('No selected video.');
-  const ext = extOf(file.name);
-  if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
-  if (!file.size || file.size < 32) throw new Error('invalid mp4: missing required mp4 boxes');
-
-  const chunkSize = 768 * 1024;
-  const overlap = 16;
-  let pending = new Uint8Array(0);
-  let hasFtyp = false;
-  let hasMoov = false;
-  let hasMdat = false;
-
-  for (let start = 0; start < file.size; start += chunkSize) {
-    const end = Math.min(file.size, start + chunkSize);
-    const part = new Uint8Array(await file.slice(start, end).arrayBuffer());
-    const scan = new Uint8Array(pending.length + part.length);
-    scan.set(pending, 0);
-    scan.set(part, pending.length);
-
-    if (!hasFtyp) hasFtyp = hasSignature(scan, MP4_BOX_FTYP);
-    if (!hasMoov) hasMoov = hasSignature(scan, MP4_BOX_MOOV);
-    if (!hasMdat) hasMdat = hasSignature(scan, MP4_BOX_MDAT);
-    if (hasFtyp && hasMoov && hasMdat) return true;
-
-    pending = scan.slice(Math.max(0, scan.length - overlap));
-  }
-
-  throw new Error('incorrect mp4 container: missing required mp4 boxes');
-}
-
 function notifyAppState(isActive){
   for(const cb of appStateCallbacks){
     try{ cb(Boolean(isActive)); }catch(_){ }
@@ -210,9 +171,6 @@ function defaultSettings() {
     performanceMode: localStorage.getItem('alter_performance_mode') || 'auto',
     authorized: localStorage.getItem('alter_authorized') === '1',
     authToken: localStorage.getItem('alter_auth_token') || '',
-    telegramUserId: localStorage.getItem('alter_telegram_user_id') || '',
-    authUserId: localStorage.getItem('alter_auth_user_id') || '',
-    lastAuthVerifiedAt: Number(localStorage.getItem('alter_last_auth_verified_at') || '0'),
     authApiBase: local.authApiBase,
     authApiFallbacks: local.authApiFallbacks,
     telegramChannelUrl: local.telegramChannelUrl,
@@ -236,9 +194,6 @@ async function saveSettings(patch) {
   localStorage.setItem('alter_performance_mode', next.performanceMode || 'auto');
   localStorage.setItem('alter_authorized', next.authorized ? '1' : '0');
   localStorage.setItem('alter_auth_token', next.authToken || next.token || '');
-  localStorage.setItem('alter_telegram_user_id', next.telegramUserId || next.telegram_user_id || '');
-  localStorage.setItem('alter_auth_user_id', next.authUserId || next.userId || next.user_id || '');
-  if (Object.prototype.hasOwnProperty.call(next, 'lastAuthVerifiedAt')) localStorage.setItem('alter_last_auth_verified_at', String(next.lastAuthVerifiedAt || 0));
   try { await Preferences.set({ key: 'alter_settings', value: JSON.stringify(next) }); } catch (_) {}
   for (const cb of settingsCallbacks) cb(next);
   return next;
@@ -287,189 +242,43 @@ async function createAuthSession() {
   throw lastError || new Error('auth_session_not_created');
 }
 
-function authResultHasHardReject(result) {
-  const values = [
-    result?.status, result?.state, result?.result, result?.reason, result?.error, result?.code,
-    result?.data?.status, result?.data?.state, result?.data?.result, result?.data?.reason, result?.data?.error, result?.data?.code
-  ].map(v => String(v || '').toLowerCase());
-  const hardReject = ['blocked', 'banned', 'ban', 'not_subscribed', 'not_subscriber', 'unsubscribed', 'not_member', 'left', 'kicked', 'denied', 'forbidden', 'blacklisted', 'revoked'];
-  if (values.some(v => hardReject.includes(v) || hardReject.some(x => v.includes(x)))) return true;
-  if (result?.blocked === true || result?.banned === true || result?.blacklisted === true) return true;
-  if (result?.subscribed === false || result?.subscription === false || result?.member === false || result?.allowed === false || result?.access === false) return true;
-  if (result?.data?.blocked === true || result?.data?.banned === true || result?.data?.blacklisted === true) return true;
-  if (result?.data?.subscribed === false || result?.data?.subscription === false || result?.data?.member === false || result?.data?.allowed === false || result?.data?.access === false) return true;
-  return false;
-}
-
-function authResultHasMembershipProof(result) {
-  const data = result?.data && typeof result.data === 'object' ? result.data : {};
-  const values = [
-    result?.status, result?.state, result?.result, result?.membership, result?.subscription_status,
-    result?.telegram_status, result?.channel_status,
-    data.status, data.state, data.result, data.membership, data.subscription_status,
-    data.telegram_status, data.channel_status
-  ].map(v => String(v || '').toLowerCase());
-
-  const positiveStatuses = ['subscribed', 'subscriber', 'member', 'creator', 'administrator', 'admin', 'allowed', 'active'];
-  const positiveFlag = result?.subscribed === true
-    || result?.subscription === true
-    || result?.is_subscribed === true
-    || result?.isSubscribed === true
-    || result?.member === true
-    || result?.is_member === true
-    || result?.isMember === true
-    || result?.channel_member === true
-    || result?.channelMember === true
-    || result?.allowed === true
-    || result?.access === true
-    || data.subscribed === true
-    || data.subscription === true
-    || data.is_subscribed === true
-    || data.isSubscribed === true
-    || data.member === true
-    || data.is_member === true
-    || data.isMember === true
-    || data.channel_member === true
-    || data.channelMember === true
-    || data.allowed === true
-    || data.access === true;
-
-  return positiveFlag || values.some(v => positiveStatuses.includes(v));
-}
-
-function authResultHasCheckedMembership(result) {
-  const data = result?.data && typeof result.data === 'object' ? result.data : {};
-  return authResultHasMembershipProof(result)
-    || result?.membership_checked === true
-    || result?.membershipChecked === true
-    || result?.subscription_checked === true
-    || result?.subscriptionChecked === true
-    || result?.telegram_checked === true
-    || result?.telegramChecked === true
-    || result?.checked === true
-    || data.membership_checked === true
-    || data.membershipChecked === true
-    || data.subscription_checked === true
-    || data.subscriptionChecked === true
-    || data.telegram_checked === true
-    || data.telegramChecked === true
-    || data.checked === true;
-}
-
-function authResultIsPositive(result, options = {}) {
-  const strictMembership = options?.strictMembership === true;
-  const status = String(result?.status || result?.state || result?.result || '').toLowerCase();
-  const nestedStatus = String(result?.data?.status || result?.data?.state || result?.data?.result || '').toLowerCase();
-  const negativeStatus = ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(status)
-    || ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(nestedStatus);
-
-  if (negativeStatus) return false;
-
-  if (strictMembership) {
-    // Startup access is allowed only after the backend explicitly proves that it
-    // checked Telegram channel membership and the account is still subscribed.
-    // A plain old "authorized:true" is not enough, because it can be stale.
-    return authResultHasMembershipProof(result);
-  }
-
-  const positiveStatus = ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed', 'authenticated', 'ok', 'success'].includes(status)
-    || ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed', 'authenticated', 'ok', 'success'].includes(nestedStatus);
-  const positiveFlag = result?.authorized === true
-    || result?.authenticated === true
-    || result?.ok === true
-    || result?.success === true
-    || result?.access === true
-    || result?.subscribed === true
-    || result?.subscription === true
-    || result?.member === true
-    || result?.verified === true
-    || result?.approved === true
-    || result?.data?.authorized === true
-    || result?.data?.authenticated === true
-    || result?.data?.ok === true
-    || result?.data?.success === true
-    || result?.data?.access === true
-    || result?.data?.subscribed === true
-    || result?.data?.subscription === true
-    || result?.data?.member === true
-    || result?.data?.verified === true
-    || result?.data?.approved === true;
-  return positiveStatus || positiveFlag;
-}
-
-async function getAuthStatus(token, options = {}) {
+async function getAuthStatus(token) {
   if (!token) throw new Error('missing_auth_token');
-
-  const rawToken = String(token || '').trim();
-  const safe = encodeURIComponent(rawToken);
-  const mode = String(options?.mode || '').toLowerCase();
-  const isStartupCheck = mode === 'startup' || options?.strictMembership === true;
-  const allowSessionFallback = options?.allowSessionFallback === true || mode === 'poll';
-  const authHeaders = rawToken ? { Authorization: `Bearer ${rawToken}` } : {};
-  const jsonHeaders = { 'Content-Type': 'application/json', ...authHeaders };
-  const checkPayload = JSON.stringify({
-    token: rawToken,
-    session_token: rawToken,
-    authToken: rawToken,
-    platform: 'android',
-    source: 'mobile',
-    force_check: true,
-    forceSubscriptionCheck: true
-  });
-
-  const normalizeAuthResponse = (result, fallbackStatus = 'not_subscribed') => {
-    const statusValue = result?.status || result?.state || result?.data?.status || result?.data?.state || fallbackStatus;
-    if (authResultHasHardReject(result)) {
-      return { ...(result || {}), authorized: false, status: statusValue };
-    }
-    if (authResultIsPositive(result, { strictMembership: isStartupCheck })) {
-      return { ...(result || {}), authorized: true, status: statusValue || 'authorized' };
-    }
-    return { ...(result || {}), authorized: false, status: statusValue };
-  };
-
-  // Correct production model:
-  // - Client sends only the server-issued token/session.
-  // - Backend resolves the Telegram account from that token.
-  // - Backend checks Telegram channel membership live through the Bot API.
-  // - Startup access is accepted only if backend explicitly returns membership
-  //   proof: subscribed/member/allowed/etc. Plain authorized:true is not enough.
-  const liveChecks = [
-    () => tryFetch('/auth/status', { method: 'GET', headers: authHeaders, cache: 'no-store' }),
-    () => tryFetch('/auth/status', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
-    () => tryFetch('/auth/check-subscription', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
-    () => tryFetch('/auth/subscription/status', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
-    () => tryFetch('/auth/me/status', { method: 'GET', headers: authHeaders, cache: 'no-store' }),
-    () => tryFetch('/auth/check', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
-    // Backward compatibility with the current backend: path value is the session token, not Telegram ID.
-    () => tryFetch(`/auth/status/${safe}`, { method: 'GET', headers: authHeaders, cache: 'no-store' })
-  ];
-
+  const safe = encodeURIComponent(token);
+  const endpoints = [`/auth/session/${safe}`, `/auth/status/${safe}`];
   let lastError = null;
-  for (const check of liveChecks) {
+  for (const endpoint of endpoints) {
     try {
-      const result = await check();
-      const normalized = normalizeAuthResponse(result, 'not_subscribed');
-      if (normalized.authorized || authResultHasHardReject(result)) return normalized;
-      lastError = normalized;
-    } catch (e) {
-      lastError = { authorized: false, status: 'status_unavailable', error: String(e?.message || e) };
-    }
-  }
+      const result = await tryFetch(endpoint);
+      const status = String(result?.status || result?.state || result?.result || '').toLowerCase();
+      const nestedStatus = String(result?.data?.status || result?.data?.state || result?.data?.result || '').toLowerCase();
+      const negativeStatus = ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(status)
+        || ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(nestedStatus);
+      const positiveStatus = ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(status)
+        || ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(nestedStatus);
+      const positiveFlag = result?.authorized === true
+        || result?.access === true
+        || result?.subscribed === true
+        || result?.subscription === true
+        || result?.member === true
+        || result?.verified === true
+        || result?.approved === true
+        || result?.data?.authorized === true
+        || result?.data?.access === true
+        || result?.data?.subscribed === true
+        || result?.data?.subscription === true
+        || result?.data?.member === true
+        || result?.data?.verified === true
+        || result?.data?.approved === true;
 
-  // /auth/session is only for a just-created Telegram login flow. It must never
-  // be used for automatic startup access, because it can confirm an old session
-  // without proving current channel membership.
-  if (!allowSessionFallback) {
-    return lastError || { authorized: false, status: 'not_subscribed' };
-  }
+      if (!negativeStatus && (positiveStatus || positiveFlag)) {
+        return { ...result, authorized: true, status: 'authorized' };
+      }
 
-  try {
-    const sessionResult = await tryFetch(`/auth/session/${safe}`, { method: 'GET', headers: authHeaders, cache: 'no-store' });
-    return normalizeAuthResponse(sessionResult, 'pending');
-  } catch (e) {
-    return { authorized: false, status: 'pending', error: String(e?.message || e) };
+      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'pending' };
+    } catch (e) { lastError = e; }
   }
+  throw lastError || new Error('auth_status_failed');
 }
 
 function findElstPatchOffset(bytes) {
@@ -489,12 +298,11 @@ async function patchFileToBlob(file) {
   const ext = extOf(file.name);
   if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
   emitProgress(5);
-  await validateMp4Container(file);
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
   emitProgress(40);
   const offset = findElstPatchOffset(bytes);
-  if (offset < 0) throw new Error('incorrect mp4 container: missing required mp4 boxes');
+  if (offset < 0) throw new Error('This video format is not supported for patching.');
   const already = PATCH_BYTES.every((b, i) => bytes[offset + i] === b);
   if (already) throw new Error('This video is already patched.');
   bytes.set(PATCH_BYTES, offset);
@@ -562,7 +370,6 @@ async function patchFileToGalleryStreaming(file, filename) {
   if (!file) throw new Error('No selected video.');
   const ext = extOf(file.name);
   if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
-  await validateMp4Container(file);
 
   const nativeBridge = window.AlterGallery;
   const mimeType = file.type || (ext === '.mov' ? 'video/quicktime' : 'video/mp4');
@@ -610,7 +417,7 @@ async function patchFileToGalleryStreaming(file, filename) {
       emitProgress(Math.min(95, 8 + Math.round((end / file.size) * 84)));
     }
 
-    if (!patched) throw new Error('incorrect mp4 container: missing required mp4 boxes');
+    if (!patched) throw new Error('This video format is not supported for patching.');
     appendBytes(pending);
     pending = new Uint8Array(0);
     const result = String(nativeBridge.finishSaveVideo(token) || '');
@@ -826,7 +633,6 @@ window.alterE = {
   video: {
     getPathForFile: file => { window.alterMobile.setSelectedFile(file); return '__mobile_selected_file__'; },
     isSupported: async () => Boolean(selectedFile && SUPPORTED_EXTENSIONS.includes(extOf(selectedFile.name))),
-    validateContainer: async () => { if (!selectedFile) throw new Error('No selected video.'); return validateMp4Container(selectedFile); },
     isAlreadyPatched: async () => {
       if (!selectedFile) return false;
       const chunkSize = 512 * 1024;
