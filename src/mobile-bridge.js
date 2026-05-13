@@ -210,6 +210,7 @@ function defaultSettings() {
     performanceMode: localStorage.getItem('alter_performance_mode') || 'auto',
     authorized: localStorage.getItem('alter_authorized') === '1',
     authToken: localStorage.getItem('alter_auth_token') || '',
+    lastAuthVerifiedAt: Number(localStorage.getItem('alter_last_auth_verified_at') || '0'),
     authApiBase: local.authApiBase,
     authApiFallbacks: local.authApiFallbacks,
     telegramChannelUrl: local.telegramChannelUrl,
@@ -233,6 +234,7 @@ async function saveSettings(patch) {
   localStorage.setItem('alter_performance_mode', next.performanceMode || 'auto');
   localStorage.setItem('alter_authorized', next.authorized ? '1' : '0');
   localStorage.setItem('alter_auth_token', next.authToken || next.token || '');
+  if (Object.prototype.hasOwnProperty.call(next, 'lastAuthVerifiedAt')) localStorage.setItem('alter_last_auth_verified_at', String(next.lastAuthVerifiedAt || 0));
   try { await Preferences.set({ key: 'alter_settings', value: JSON.stringify(next) }); } catch (_) {}
   for (const cb of settingsCallbacks) cb(next);
   return next;

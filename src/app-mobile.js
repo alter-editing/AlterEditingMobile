@@ -22,6 +22,8 @@ const VISUAL_RUNTIME = {
 };
 const AUTH_POLL_MAX_MS = 90 * 1000;
 const AUTH_POLL_INTERVAL_MS = 2500;
+const AUTH_STARTUP_CHECK_TIMEOUT_MS = 7000;
+const AUTH_RECHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 let authPollActive = false;
 let authClickLockedUntil = 0;
 let authTapInProgress = false;
@@ -109,6 +111,29 @@ function isServerAuthorized(st){
   const negativeStatus = ['pending','waiting','created','new','requested','unauthorized','not_authorized','denied','expired','false','error'].includes(status)
     || ['pending','waiting','created','new','requested','unauthorized','not_authorized','denied','expired','false','error'].includes(nestedStatus);
   return !negativeStatus && (positiveStatus || positiveFlag);
+}
+
+function isAuthExplicitlyRejected(st){
+  if(!st || typeof st !== 'object') return false;
+  const values = [
+    st.status, st.state, st.result, st.reason, st.error, st.code,
+    st.data?.status, st.data?.state, st.data?.result, st.data?.reason, st.data?.error, st.data?.code
+  ].map(v=>String(v||'').toLowerCase());
+  const hardReject = ['blocked','banned','ban','not_subscribed','not_subscriber','unsubscribed','not_member','left','kicked','denied','forbidden','blacklisted','revoked'];
+  if(values.some(v=>hardReject.includes(v) || hardReject.some(x=>v.includes(x)))) return true;
+  if(st.blocked === true || st.banned === true || st.blacklisted === true) return true;
+  if(st.subscribed === false || st.member === false || st.allowed === false) return true;
+  if(st.data?.blocked === true || st.data?.banned === true || st.data?.blacklisted === true) return true;
+  if(st.data?.subscribed === false || st.data?.member === false || st.data?.allowed === false) return true;
+  return false;
+}
+
+function withTimeout(promise, ms, fallback=null){
+  return new Promise(resolve=>{
+    let done=false;
+    const timer=setTimeout(()=>{ if(!done){ done=true; resolve(fallback); } }, ms);
+    Promise.resolve(promise).then(v=>{ if(!done){ done=true; clearTimeout(timer); resolve(v); } }).catch(e=>{ if(!done){ done=true; clearTimeout(timer); resolve(fallback ?? {error:String(e?.message||e)}); } });
+  });
 }
 function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function fmt(bytes){if(!bytes)return '-';const mb=bytes/1024/1024;return `${mb.toFixed(mb>=100?0:1)} MB`;}
@@ -323,7 +348,9 @@ async function savePendingAuth(token,url){
   return state.settings;
 }
 async function completeAuthorization(token){
-  state.settings=await clearPendingAuth({authorized:true,authToken:token});
+  const verifiedAt=nowMs();
+  localStorage.setItem('alter_last_auth_verified_at', String(verifiedAt));
+  state.settings=await clearPendingAuth({authorized:true,authToken:token,lastAuthVerifiedAt:verifiedAt});
   state.logs=[];
   state.externalAuthActive=false;
   document.body.classList.remove('is-external-transition');
@@ -455,7 +482,9 @@ async function init(){
   particles();
   fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';fileInput.hidden=true;document.body.appendChild(fileInput);
   fileInput.addEventListener('change',()=>{const f=fileInput.files?.[0];markExternalTransition('file',false);if(f)handleFile(f);else saveUiSnapshotSoon();});
-  bind();bindLifecycleResume();applyText();await validateStoredAuthorization();renderAuth();renderVideo();renderLogs();
+  bind();bindLifecycleResume();applyText();
+  await validateStoredAuthorization({startup:true});
+  renderAuth();renderVideo();renderLogs();
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){pollAuthorization(state.settings.pendingAuthToken,{silent:true});}
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
   if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
@@ -504,7 +533,7 @@ function bind(){
   $('languageButton')?.addEventListener('click',switchLanguage);
   $('themeButton')?.addEventListener('click',switchTheme);
   $('performanceButton')?.addEventListener('click',cyclePerformanceMode);
-  $('logoutButton')?.addEventListener('click',async()=>{state.settings=await window.alterE.settings.update({authorized:false,authToken:''});renderAuth()});
+  $('logoutButton')?.addEventListener('click',async()=>{localStorage.removeItem('alter_last_auth_verified_at');state.settings=await window.alterE.settings.update({authorized:false,authToken:'',lastAuthVerifiedAt:0});renderAuth()});
   {
     const authBtn = $('authButton');
     if(authBtn){
@@ -656,14 +685,53 @@ async function clearStaleAuthProgress(){
   resetAuthButtonState();
 }
 
-async function validateStoredAuthorization(){
+async function validateStoredAuthorization({force=false, startup=false}={}){
   const token=state.settings?.authToken||'';
-  if(!state.settings?.authorized||!token)return;
-  const st=await window.alterE.auth.status(token).catch(()=>null);
-  const ok=isServerAuthorized(st);
-  if(!ok){
-    state.settings=await window.alterE.settings.update({authorized:false,authToken:''});
+  if(!state.settings?.authorized || !token) return false;
+
+  const last=Number(state.settings?.lastAuthVerifiedAt || localStorage.getItem('alter_last_auth_verified_at') || 0);
+  if(!force && last && nowMs()-last < AUTH_RECHECK_INTERVAL_MS){
+    return true;
   }
+
+  const request=window.alterE.auth.status(token).catch(e=>({ error:String(e?.message||e), status:'unknown' }));
+  const st=startup ? await withTimeout(request, AUTH_STARTUP_CHECK_TIMEOUT_MS, {status:'timeout'}) : await request;
+
+  if(isServerAuthorized(st)){
+    const verifiedAt=nowMs();
+    localStorage.setItem('alter_last_auth_verified_at', String(verifiedAt));
+    state.settings=await window.alterE.settings.update({
+      authorized:true,
+      authToken:token,
+      lastAuthVerifiedAt:verifiedAt,
+      authInProgress:false,
+      pendingAuthToken:'',
+      pendingAuthUrl:'',
+      pendingAuthStartedAt:0,
+      authStartedAt:0
+    }).catch(()=>({...state.settings,lastAuthVerifiedAt:verifiedAt}));
+    return true;
+  }
+
+  // Do not force Telegram login again on soft/temporary states for an already
+  // authorized user. Old sessions can return pending/expired/timeout while the
+  // actual Telegram channel membership is still valid. Lock only on explicit
+  // server denial: not subscribed, blocked, banned, denied, etc.
+  if(isAuthExplicitlyRejected(st)){
+    localStorage.removeItem('alter_last_auth_verified_at');
+    state.settings=await window.alterE.settings.update({
+      authorized:false,
+      authToken:'',
+      authInProgress:false,
+      pendingAuthToken:'',
+      pendingAuthUrl:'',
+      pendingAuthStartedAt:0,
+      authStartedAt:0
+    }).catch(()=>({...state.settings,authorized:false,authToken:''}));
+    return false;
+  }
+
+  return true;
 }
 
 function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);resetAuthButtonState();}
