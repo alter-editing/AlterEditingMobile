@@ -1,9 +1,9 @@
 const $ = id => document.getElementById(id);
 
 const i18n = {
-  en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Drag a file here or tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'This video format is not supported. Please convert the video to MP4/MOV format and try again.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Brave will open. If Brave is not installed, Google Play will open so you can install it. Follow the screenshot below after opening Brave.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Brave',desktopUploadCancel:'Cancel'},
-  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Этот формат видео не поддерживается. Пожалуйста, перекодируйте видео в mp4/mov формат и повторите попытку.',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
-  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Bu video formatı desteklenmiyor. Lütfen videoyu MP4/MOV formatına dönüştürüp tekrar deneyin.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
+  en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Drag a file here or tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'The video is recorded in an incorrect MP4 container. Please transcode it or render it through CapCut or another convenient app.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Brave will open. If Brave is not installed, Google Play will open so you can install it. Follow the screenshot below after opening Brave.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Brave',desktopUploadCancel:'Cancel'},
+  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Видео записано в неправильном контейнере mp4. Пожалуйста, перекодируйте его или зарендерите его через CapCut или другое удобное приложение.',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
+  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Video yanlış MP4 konteynerinde kaydedilmiş. Lütfen videoyu CapCut veya başka uygun bir uygulama ile yeniden kodlayın/render alın.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
 };
 
 const state = { settings:null, file:null, fileUrl:'', working:false, logs:[], filePickerActive:false, externalAuthActive:false };
@@ -26,6 +26,7 @@ let authPollActive = false;
 let authClickLockedUntil = 0;
 let authTapInProgress = false;
 let lastLifecycleResumeAt = 0;
+let lastAuthTapEventAt = 0;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
 let fileInput;
 
@@ -464,8 +465,12 @@ async function init(){
 
 function hardAuthTapHandler(event){
   try{
+    event?.preventDefault?.();
     event?.stopPropagation?.();
   }catch(_){}
+  const stamp = Date.now();
+  if(stamp - lastAuthTapEventAt < 700) return;
+  lastAuthTapEventAt = stamp;
   playAuthButtonAnimation();
   resetAuthButtonState();
   authorize();
@@ -476,10 +481,7 @@ function bindAuthOverlaySafety(){
   const overlay = $('authOverlay');
   const btn = $('authButton');
   if(!overlay || !btn) return;
-  overlay.addEventListener('touchend', e=>{
-    if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
-  }, {passive:false});
-  overlay.addEventListener('pointerup', e=>{
+  overlay.addEventListener('click', e=>{
     if(e.target === btn || btn.contains(e.target)) hardAuthTapHandler(e);
   }, {passive:false});
 }
@@ -506,11 +508,7 @@ function bind(){
   {
     const authBtn = $('authButton');
     if(authBtn){
-      authBtn.addEventListener('touchstart', ()=>playAuthButtonAnimation(), {passive:true});
-      authBtn.addEventListener('pointerdown', ()=>playAuthButtonAnimation(), {passive:true});
       authBtn.addEventListener('click', hardAuthTapHandler, {passive:false});
-      authBtn.addEventListener('touchend', hardAuthTapHandler, {passive:false});
-      authBtn.addEventListener('pointerup', hardAuthTapHandler, {passive:false});
     }
   }
   $('howToUseButton')?.addEventListener('click',()=>openTutorial(true));
@@ -658,25 +656,12 @@ async function clearStaleAuthProgress(){
   resetAuthButtonState();
 }
 
-function isServerBlockedOrUnsubscribed(st){
-  if(!st || typeof st !== 'object') return false;
-  const values = [st.status, st.state, st.result, st.reason, st.error, st.data?.status, st.data?.state, st.data?.reason, st.data?.error]
-    .map(v=>String(v||'').toLowerCase());
-  return values.some(v=>['blocked','banned','ban','blacklisted','unsubscribed','not_subscribed','not_member','subscription_required','denied'].includes(v));
-}
-
 async function validateStoredAuthorization(){
   const token=state.settings?.authToken||'';
   if(!state.settings?.authorized||!token)return;
   const st=await window.alterE.auth.status(token).catch(()=>null);
-  if(isServerAuthorized(st)){
-    state.settings=await window.alterE.settings.update({authorized:true,authToken:token,lastAuthCheckAt:Date.now()});
-    return;
-  }
-  // Do not force Telegram login again on every restart because of a temporary
-  // pending/expired/network response. Only lock the app when the server clearly
-  // says the user is unsubscribed or blocked.
-  if(isServerBlockedOrUnsubscribed(st)){
+  const ok=isServerAuthorized(st);
+  if(!ok){
     state.settings=await window.alterE.settings.update({authorized:false,authToken:''});
   }
 }
@@ -772,12 +757,24 @@ function renderVideo(){
 }
 async function handleFile(file){
   const ext=file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-  const type=String(file?.type||'').toLowerCase();
-  const probablyMp4Mov = ['.mp4','.mov'].includes(ext) || ['video/mp4','video/quicktime','video/mov','video/x-m4v'].includes(type);
-  if(!probablyMp4Mov){toast(t('unsupported'));resetFilePicker();markExternalTransition('file',false);return}
+  if(!['.mp4','.mov'].includes(ext)){toast(t('unsupported'));resetFilePicker();markExternalTransition('file',false);return}
   if(isVideoTooLarge(file)){showTooLargeToast();log('error','videoTooLarge',file.name);resetFilePicker();markExternalTransition('file',false);return}
   state.file=file;
   state.fileUrl=window.alterMobile.setSelectedFile(file);
+  try{
+    await window.alterE?.video?.validateContainer?.();
+  }catch(e){
+    const raw=String(e?.message||e);
+    state.file=null;
+    state.fileUrl=window.alterMobile.setSelectedFile(null);
+    resetFilePicker();
+    renderVideo();
+    markExternalTransition('file',false);
+    const m=/not supported for patching|format is not supported|incorrect mp4 container|invalid mp4|missing required mp4 boxes/i.test(raw)?t('unsupportedPatchFormat'):raw;
+    toast(t('failed'),m);
+    log('error','failed',m);
+    return;
+  }
   resetFilePicker();
   renderVideo();
   saveUiSnapshot();
@@ -800,7 +797,7 @@ async function patch(){
     log('success','saved',r.outputPath);
   }catch(e){
     const raw=String(e?.message||e);
-    const m=/Only MP4 and MOV are supported/i.test(raw)?t('unsupportedPatchFormat'):raw;
+    const m=/not supported for patching|format is not supported|incorrect mp4 container|invalid mp4|missing required mp4 boxes/i.test(raw)?t('unsupportedPatchFormat'):raw;
     toast(t('failed'),m);
     log('error','failed',m);
   }finally{

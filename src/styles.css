@@ -1163,8 +1163,8 @@ body[data-theme='light'] .desktop-upload-step-image{border-color:rgba(18,26,36,.
   }
 }
 #authButton:active{
-  transform:translate3d(0,1px,0) scale(.97);
-  filter:brightness(1.15);
+  transform:none!important;
+  filter:none!important;
 }
 
 
