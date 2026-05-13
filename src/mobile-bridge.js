@@ -301,14 +301,83 @@ function authResultHasHardReject(result) {
   return false;
 }
 
-function authResultIsPositive(result) {
+function authResultHasMembershipProof(result) {
+  const data = result?.data && typeof result.data === 'object' ? result.data : {};
+  const values = [
+    result?.status, result?.state, result?.result, result?.membership, result?.subscription_status,
+    result?.telegram_status, result?.channel_status,
+    data.status, data.state, data.result, data.membership, data.subscription_status,
+    data.telegram_status, data.channel_status
+  ].map(v => String(v || '').toLowerCase());
+
+  const positiveStatuses = ['subscribed', 'subscriber', 'member', 'creator', 'administrator', 'admin', 'allowed', 'active'];
+  const positiveFlag = result?.subscribed === true
+    || result?.subscription === true
+    || result?.is_subscribed === true
+    || result?.isSubscribed === true
+    || result?.member === true
+    || result?.is_member === true
+    || result?.isMember === true
+    || result?.channel_member === true
+    || result?.channelMember === true
+    || result?.allowed === true
+    || result?.access === true
+    || data.subscribed === true
+    || data.subscription === true
+    || data.is_subscribed === true
+    || data.isSubscribed === true
+    || data.member === true
+    || data.is_member === true
+    || data.isMember === true
+    || data.channel_member === true
+    || data.channelMember === true
+    || data.allowed === true
+    || data.access === true;
+
+  return positiveFlag || values.some(v => positiveStatuses.includes(v));
+}
+
+function authResultHasCheckedMembership(result) {
+  const data = result?.data && typeof result.data === 'object' ? result.data : {};
+  return authResultHasMembershipProof(result)
+    || result?.membership_checked === true
+    || result?.membershipChecked === true
+    || result?.subscription_checked === true
+    || result?.subscriptionChecked === true
+    || result?.telegram_checked === true
+    || result?.telegramChecked === true
+    || result?.checked === true
+    || data.membership_checked === true
+    || data.membershipChecked === true
+    || data.subscription_checked === true
+    || data.subscriptionChecked === true
+    || data.telegram_checked === true
+    || data.telegramChecked === true
+    || data.checked === true;
+}
+
+function authResultIsPositive(result, options = {}) {
+  const strictMembership = options?.strictMembership === true;
   const status = String(result?.status || result?.state || result?.result || '').toLowerCase();
   const nestedStatus = String(result?.data?.status || result?.data?.state || result?.data?.result || '').toLowerCase();
   const negativeStatus = ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(status)
     || ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(nestedStatus);
-  const positiveStatus = ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(status)
-    || ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(nestedStatus);
+
+  if (negativeStatus) return false;
+
+  if (strictMembership) {
+    // Startup access is allowed only after the backend explicitly proves that it
+    // checked Telegram channel membership and the account is still subscribed.
+    // A plain old "authorized:true" is not enough, because it can be stale.
+    return authResultHasMembershipProof(result);
+  }
+
+  const positiveStatus = ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed', 'authenticated', 'ok', 'success'].includes(status)
+    || ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed', 'authenticated', 'ok', 'success'].includes(nestedStatus);
   const positiveFlag = result?.authorized === true
+    || result?.authenticated === true
+    || result?.ok === true
+    || result?.success === true
     || result?.access === true
     || result?.subscribed === true
     || result?.subscription === true
@@ -316,13 +385,16 @@ function authResultIsPositive(result) {
     || result?.verified === true
     || result?.approved === true
     || result?.data?.authorized === true
+    || result?.data?.authenticated === true
+    || result?.data?.ok === true
+    || result?.data?.success === true
     || result?.data?.access === true
     || result?.data?.subscribed === true
     || result?.data?.subscription === true
     || result?.data?.member === true
     || result?.data?.verified === true
     || result?.data?.approved === true;
-  return !negativeStatus && (positiveStatus || positiveFlag);
+  return positiveStatus || positiveFlag;
 }
 
 async function getAuthStatus(token, options = {}) {
@@ -330,28 +402,45 @@ async function getAuthStatus(token, options = {}) {
 
   const rawToken = String(token || '').trim();
   const safe = encodeURIComponent(rawToken);
-  const allowSessionFallback = options?.allowSessionFallback === true || options?.mode === 'poll';
+  const mode = String(options?.mode || '').toLowerCase();
+  const isStartupCheck = mode === 'startup' || options?.strictMembership === true;
+  const allowSessionFallback = options?.allowSessionFallback === true || mode === 'poll';
   const authHeaders = rawToken ? { Authorization: `Bearer ${rawToken}` } : {};
+  const jsonHeaders = { 'Content-Type': 'application/json', ...authHeaders };
+  const checkPayload = JSON.stringify({
+    token: rawToken,
+    session_token: rawToken,
+    authToken: rawToken,
+    platform: 'android',
+    source: 'mobile',
+    force_check: true,
+    forceSubscriptionCheck: true
+  });
 
   const normalizeAuthResponse = (result, fallbackStatus = 'not_subscribed') => {
+    const statusValue = result?.status || result?.state || result?.data?.status || result?.data?.state || fallbackStatus;
     if (authResultHasHardReject(result)) {
-      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || fallbackStatus };
+      return { ...(result || {}), authorized: false, status: statusValue };
     }
-    if (authResultIsPositive(result)) {
-      return { ...(result || {}), authorized: true, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'authorized' };
+    if (authResultIsPositive(result, { strictMembership: isStartupCheck })) {
+      return { ...(result || {}), authorized: true, status: statusValue || 'authorized' };
     }
-    return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || fallbackStatus };
+    return { ...(result || {}), authorized: false, status: statusValue };
   };
 
-  // Correct model:
-  // - The app sends only a server-issued token/session.
-  // - The backend resolves Telegram ID from that token.
-  // - The backend checks Telegram channel membership itself.
-  // - The app never sends telegramUserId/userId as proof of access.
+  // Correct production model:
+  // - Client sends only the server-issued token/session.
+  // - Backend resolves the Telegram account from that token.
+  // - Backend checks Telegram channel membership live through the Bot API.
+  // - Startup access is accepted only if backend explicitly returns membership
+  //   proof: subscribed/member/allowed/etc. Plain authorized:true is not enough.
   const liveChecks = [
     () => tryFetch('/auth/status', { method: 'GET', headers: authHeaders, cache: 'no-store' }),
+    () => tryFetch('/auth/status', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
+    () => tryFetch('/auth/check-subscription', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
+    () => tryFetch('/auth/subscription/status', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
     () => tryFetch('/auth/me/status', { method: 'GET', headers: authHeaders, cache: 'no-store' }),
-    () => tryFetch('/auth/check', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, body: JSON.stringify({ platform: 'android', source: 'mobile' }) }),
+    () => tryFetch('/auth/check', { method: 'POST', headers: jsonHeaders, body: checkPayload, cache: 'no-store' }),
     // Backward compatibility with the current backend: path value is the session token, not Telegram ID.
     () => tryFetch(`/auth/status/${safe}`, { method: 'GET', headers: authHeaders, cache: 'no-store' })
   ];

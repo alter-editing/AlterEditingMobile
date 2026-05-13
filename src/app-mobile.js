@@ -386,6 +386,43 @@ async function savePendingAuth(token,url){
   state.settings=await window.alterE.settings.update({pendingAuthToken:token,pendingAuthUrl:url||'',pendingAuthStartedAt:nowMs(),authInProgress:true});
   return state.settings;
 }
+
+async function prepareFreshAuthSessionAfterReject(){
+  try{
+    const session=await window.alterE.auth.createSession();
+    const token=session?.session_token || session?.token || '';
+    const url=session?.auth_url || session?.telegram_url || session?.url || '';
+    if(!token) throw new Error('auth_session_not_created');
+    state.settings=await window.alterE.settings.update({
+      authorized:false,
+      authToken:'',
+      telegramUserId:'',
+      authUserId:'',
+      lastAuthVerifiedAt:0,
+      pendingAuthToken:token,
+      pendingAuthUrl:url,
+      pendingAuthStartedAt:nowMs(),
+      authInProgress:true,
+      authStartedAt:nowMs()
+    });
+    saveUiSnapshotSoon?.();
+    return true;
+  }catch(_){
+    state.settings=await window.alterE.settings.update({
+      authorized:false,
+      authToken:'',
+      telegramUserId:'',
+      authUserId:'',
+      lastAuthVerifiedAt:0,
+      pendingAuthToken:'',
+      pendingAuthUrl:'',
+      pendingAuthStartedAt:0,
+      authInProgress:false,
+      authStartedAt:0
+    }).catch(()=>({...state.settings,authorized:false,authToken:''}));
+    return false;
+  }
+}
 async function completeAuthorization(token, serverStatus=null){
   const verifiedAt=nowMs();
   const identity=extractAuthIdentity(serverStatus);
@@ -768,6 +805,19 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
   // prevents unsubscribed users from entering with an old local cache.
   if(startup && !isServerAuthorized(st)){
     localStorage.removeItem('alter_last_auth_verified_at');
+
+    // If the live backend says the user is no longer subscribed / token is no
+    // longer valid, remove the old token immediately and prepare a new Telegram
+    // auth session. This gives the app a fresh authorization token instead of
+    // reusing the stale one.
+    if(isAuthExplicitlyRejected(st)){
+      await prepareFreshAuthSessionAfterReject();
+      return false;
+    }
+
+    // Unknown/temporary server states must not be treated as a valid login, but
+    // also should not destroy the stored token. The UI stays locked until the
+    // server gives an explicit membership confirmation.
     state.settings=await window.alterE.settings.update({
       authorized:false,
       authInProgress:false,
@@ -785,17 +835,7 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
   // blocked, banned, denied, etc.
   if(isAuthExplicitlyRejected(st)){
     localStorage.removeItem('alter_last_auth_verified_at');
-    state.settings=await window.alterE.settings.update({
-      authorized:false,
-      authToken:'',
-      telegramUserId:'',
-      authUserId:'',
-      authInProgress:false,
-      pendingAuthToken:'',
-      pendingAuthUrl:'',
-      pendingAuthStartedAt:0,
-      authStartedAt:0
-    }).catch(()=>({...state.settings,authorized:false,authToken:''}));
+    await prepareFreshAuthSessionAfterReject();
     return false;
   }
 
