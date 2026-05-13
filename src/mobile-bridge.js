@@ -283,45 +283,73 @@ async function createAuthSession() {
   throw lastError || new Error('auth_session_not_created');
 }
 
+function authResultHasHardReject(result) {
+  const values = [
+    result?.status, result?.state, result?.result, result?.reason, result?.error, result?.code,
+    result?.data?.status, result?.data?.state, result?.data?.result, result?.data?.reason, result?.data?.error, result?.data?.code
+  ].map(v => String(v || '').toLowerCase());
+  const hardReject = ['blocked', 'banned', 'ban', 'not_subscribed', 'not_subscriber', 'unsubscribed', 'not_member', 'left', 'kicked', 'denied', 'forbidden', 'blacklisted', 'revoked'];
+  if (values.some(v => hardReject.includes(v) || hardReject.some(x => v.includes(x)))) return true;
+  if (result?.blocked === true || result?.banned === true || result?.blacklisted === true) return true;
+  if (result?.subscribed === false || result?.subscription === false || result?.member === false || result?.allowed === false || result?.access === false) return true;
+  if (result?.data?.blocked === true || result?.data?.banned === true || result?.data?.blacklisted === true) return true;
+  if (result?.data?.subscribed === false || result?.data?.subscription === false || result?.data?.member === false || result?.data?.allowed === false || result?.data?.access === false) return true;
+  return false;
+}
+
+function authResultIsPositive(result) {
+  const status = String(result?.status || result?.state || result?.result || '').toLowerCase();
+  const nestedStatus = String(result?.data?.status || result?.data?.state || result?.data?.result || '').toLowerCase();
+  const negativeStatus = ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(status)
+    || ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(nestedStatus);
+  const positiveStatus = ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(status)
+    || ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(nestedStatus);
+  const positiveFlag = result?.authorized === true
+    || result?.access === true
+    || result?.subscribed === true
+    || result?.subscription === true
+    || result?.member === true
+    || result?.verified === true
+    || result?.approved === true
+    || result?.data?.authorized === true
+    || result?.data?.access === true
+    || result?.data?.subscribed === true
+    || result?.data?.subscription === true
+    || result?.data?.member === true
+    || result?.data?.verified === true
+    || result?.data?.approved === true;
+  return !negativeStatus && (positiveStatus || positiveFlag);
+}
+
 async function getAuthStatus(token) {
   if (!token) throw new Error('missing_auth_token');
   const safe = encodeURIComponent(token);
-  const endpoints = [`/auth/session/${safe}`, `/auth/status/${safe}`];
+  // Important: /auth/status is the live subscription check. /auth/session can
+  // stay authorized after first login, so it must not override a later unsubscribe.
+  const endpoints = [`/auth/status/${safe}`, `/auth/session/${safe}`];
   let lastError = null;
   let lastResult = null;
+  let positiveResult = null;
+
   for (const endpoint of endpoints) {
     try {
       const result = await tryFetch(endpoint);
       lastResult = result;
-      const status = String(result?.status || result?.state || result?.result || '').toLowerCase();
-      const nestedStatus = String(result?.data?.status || result?.data?.state || result?.data?.result || '').toLowerCase();
-      const negativeStatus = ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(status)
-        || ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(nestedStatus);
-      const positiveStatus = ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(status)
-        || ['authorized', 'approved', 'verified', 'subscribed', 'member', 'active', 'allowed'].includes(nestedStatus);
-      const positiveFlag = result?.authorized === true
-        || result?.access === true
-        || result?.subscribed === true
-        || result?.subscription === true
-        || result?.member === true
-        || result?.verified === true
-        || result?.approved === true
-        || result?.data?.authorized === true
-        || result?.data?.access === true
-        || result?.data?.subscribed === true
-        || result?.data?.subscription === true
-        || result?.data?.member === true
-        || result?.data?.verified === true
-        || result?.data?.approved === true;
 
-      if (!negativeStatus && (positiveStatus || positiveFlag)) {
-        return { ...result, authorized: true, status: 'authorized' };
+      if (authResultHasHardReject(result)) {
+        return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
       }
-      // Do not return after the first negative answer. Some backends keep
-      // /auth/session for the one-time login flow and expose the actual saved
-      // membership state through /auth/status. Try every known endpoint first.
+
+      if (authResultIsPositive(result)) {
+        positiveResult = positiveResult || result;
+        // Continue checking the remaining endpoint. If /auth/session says ok but
+        // /auth/status says unsubscribed, the hard reject above must win.
+        continue;
+      }
     } catch (e) { lastError = e; }
   }
+
+  if (positiveResult) return { ...positiveResult, authorized: true, status: 'authorized' };
   if (lastResult) {
     return { ...(lastResult || {}), authorized: false, status: lastResult?.status || lastResult?.state || lastResult?.data?.status || lastResult?.data?.state || 'pending' };
   }
