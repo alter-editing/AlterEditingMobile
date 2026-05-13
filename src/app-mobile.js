@@ -128,6 +128,45 @@ function isAuthExplicitlyRejected(st){
   return false;
 }
 
+
+function extractAuthIdentity(st){
+  if(!st || typeof st !== 'object') return {};
+  const data = st.data && typeof st.data === 'object' ? st.data : {};
+  const user = data.user && typeof data.user === 'object' ? data.user : (st.user && typeof st.user === 'object' ? st.user : {});
+  const telegram = data.telegram && typeof data.telegram === 'object' ? data.telegram : (st.telegram && typeof st.telegram === 'object' ? st.telegram : {});
+  const telegramUserId = String(
+    st.telegram_user_id || st.telegramUserId || st.tg_id || st.tgId || st.telegram_id || st.telegramId ||
+    data.telegram_user_id || data.telegramUserId || data.tg_id || data.tgId || data.telegram_id || data.telegramId ||
+    user.telegram_user_id || user.telegramUserId || user.tg_id || user.tgId || user.telegram_id || user.telegramId || user.id ||
+    telegram.user_id || telegram.userId || telegram.id || ''
+  ).trim();
+  const authUserId = String(
+    st.user_id || st.userId || st.member_id || st.memberId || st.id ||
+    data.user_id || data.userId || data.member_id || data.memberId || data.id ||
+    user.user_id || user.userId || user.member_id || user.memberId || ''
+  ).trim();
+  return { telegramUserId, authUserId };
+}
+
+function uniqueAuthCheckKeys(settings){
+  // Security rule: the client must never use Telegram ID / user ID as proof of access.
+  // A Telegram ID can be typed, copied, or modified on a rooted device. Only the
+  // server-issued auth token/session is allowed to identify the user.
+  const token = String(settings?.authToken || '').trim();
+  return token ? [token] : [];
+}
+
+async function liveStatusForStoredAuth(settings){
+  const token = String(settings?.authToken || '').trim();
+  if(!token) return {authorized:false,status:'missing_auth_token'};
+
+  // Startup/resume check must ask the backend who owns this token and whether
+  // that Telegram account is still subscribed. The client does not send any
+  // telegramUserId/authUserId here, so another person cannot pass by writing an ID.
+  return await window.alterE.auth.status(token, {mode:'startup', allowSessionFallback:false})
+    .catch(e=>({authorized:false,status:'status_unavailable',error:String(e?.message||e)}));
+}
+
 function withTimeout(promise, ms, fallback=null){
   return new Promise(resolve=>{
     let done=false;
@@ -347,10 +386,11 @@ async function savePendingAuth(token,url){
   state.settings=await window.alterE.settings.update({pendingAuthToken:token,pendingAuthUrl:url||'',pendingAuthStartedAt:nowMs(),authInProgress:true});
   return state.settings;
 }
-async function completeAuthorization(token){
+async function completeAuthorization(token, serverStatus=null){
   const verifiedAt=nowMs();
+  const identity=extractAuthIdentity(serverStatus);
   localStorage.setItem('alter_last_auth_verified_at', String(verifiedAt));
-  state.settings=await clearPendingAuth({authorized:true,authToken:token,lastAuthVerifiedAt:verifiedAt});
+  state.settings=await clearPendingAuth({authorized:true,authToken:token,telegramUserId:'',authUserId:'',lastAuthVerifiedAt:verifiedAt});
   state.logs=[];
   state.externalAuthActive=false;
   document.body.classList.remove('is-external-transition');
@@ -377,7 +417,7 @@ async function pollAuthorization(token,{silent=false}={}){
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
       const st=await window.alterE.auth.status(token, {allowSessionFallback:true, mode:'poll'}).catch(()=>null);
       if(isServerAuthorized(st)){
-        await completeAuthorization(token);
+        await completeAuthorization(token, st);
         return true;
       }
       await new Promise(r=>setTimeout(r,AUTH_POLL_INTERVAL_MS));
@@ -538,7 +578,7 @@ function bind(){
   $('languageButton')?.addEventListener('click',switchLanguage);
   $('themeButton')?.addEventListener('click',switchTheme);
   $('performanceButton')?.addEventListener('click',cyclePerformanceMode);
-  $('logoutButton')?.addEventListener('click',async()=>{localStorage.removeItem('alter_last_auth_verified_at');state.settings=await window.alterE.settings.update({authorized:false,authToken:'',lastAuthVerifiedAt:0});renderAuth()});
+  $('logoutButton')?.addEventListener('click',async()=>{localStorage.removeItem('alter_last_auth_verified_at');state.settings=await window.alterE.settings.update({authorized:false,authToken:'',telegramUserId:'',authUserId:'',lastAuthVerifiedAt:0});renderAuth()});
   {
     const authBtn = $('authButton');
     if(authBtn){
@@ -692,8 +732,7 @@ async function clearStaleAuthProgress(){
 }
 
 async function validateStoredAuthorization({force=false, startup=false}={}){
-  const token=state.settings?.authToken||'';
-  if(!state.settings?.authorized || !token) return false;
+  if(!state.settings?.authorized || !uniqueAuthCheckKeys(state.settings).length) return false;
 
   const last=Number(state.settings?.lastAuthVerifiedAt || localStorage.getItem('alter_last_auth_verified_at') || 0);
   // On cold startup the app must always ask the server again. The local
@@ -702,7 +741,7 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
     return true;
   }
 
-  const request=window.alterE.auth.status(token).catch(e=>({ error:String(e?.message||e), status:'unknown' }));
+  const request=liveStatusForStoredAuth(state.settings).catch(e=>({ error:String(e?.message||e), status:'unknown' }));
   const st=startup ? await withTimeout(request, AUTH_STARTUP_CHECK_TIMEOUT_MS, {status:'timeout'}) : await request;
 
   if(isServerAuthorized(st)){
@@ -710,7 +749,9 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
     localStorage.setItem('alter_last_auth_verified_at', String(verifiedAt));
     state.settings=await window.alterE.settings.update({
       authorized:true,
-      authToken:token,
+      authToken:state.settings?.authToken||'',
+      telegramUserId:'',
+      authUserId:'',
       lastAuthVerifiedAt:verifiedAt,
       authInProgress:false,
       pendingAuthToken:'',
@@ -747,6 +788,8 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
     state.settings=await window.alterE.settings.update({
       authorized:false,
       authToken:'',
+      telegramUserId:'',
+      authUserId:'',
       authInProgress:false,
       pendingAuthToken:'',
       pendingAuthUrl:'',

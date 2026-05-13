@@ -210,6 +210,8 @@ function defaultSettings() {
     performanceMode: localStorage.getItem('alter_performance_mode') || 'auto',
     authorized: localStorage.getItem('alter_authorized') === '1',
     authToken: localStorage.getItem('alter_auth_token') || '',
+    telegramUserId: localStorage.getItem('alter_telegram_user_id') || '',
+    authUserId: localStorage.getItem('alter_auth_user_id') || '',
     lastAuthVerifiedAt: Number(localStorage.getItem('alter_last_auth_verified_at') || '0'),
     authApiBase: local.authApiBase,
     authApiFallbacks: local.authApiFallbacks,
@@ -234,6 +236,8 @@ async function saveSettings(patch) {
   localStorage.setItem('alter_performance_mode', next.performanceMode || 'auto');
   localStorage.setItem('alter_authorized', next.authorized ? '1' : '0');
   localStorage.setItem('alter_auth_token', next.authToken || next.token || '');
+  localStorage.setItem('alter_telegram_user_id', next.telegramUserId || next.telegram_user_id || '');
+  localStorage.setItem('alter_auth_user_id', next.authUserId || next.userId || next.user_id || '');
   if (Object.prototype.hasOwnProperty.call(next, 'lastAuthVerifiedAt')) localStorage.setItem('alter_last_auth_verified_at', String(next.lastAuthVerifiedAt || 0));
   try { await Preferences.set({ key: 'alter_settings', value: JSON.stringify(next) }); } catch (_) {}
   for (const cb of settingsCallbacks) cb(next);
@@ -323,42 +327,57 @@ function authResultIsPositive(result) {
 
 async function getAuthStatus(token, options = {}) {
   if (!token) throw new Error('missing_auth_token');
-  const safe = encodeURIComponent(token);
-  const allowSessionFallback = options?.allowSessionFallback === true || options?.mode === 'poll';
 
-  // Live channel check. This is the only endpoint allowed to keep a saved user
-  // inside the app on startup/resume, because /auth/session can still confirm
-  // an old login after the user leaves the Telegram channel.
-  try {
-    const result = await tryFetch(`/auth/status/${safe}`);
+  const rawToken = String(token || '').trim();
+  const safe = encodeURIComponent(rawToken);
+  const allowSessionFallback = options?.allowSessionFallback === true || options?.mode === 'poll';
+  const authHeaders = rawToken ? { Authorization: `Bearer ${rawToken}` } : {};
+
+  const normalizeAuthResponse = (result, fallbackStatus = 'not_subscribed') => {
     if (authResultHasHardReject(result)) {
-      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
+      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || fallbackStatus };
     }
     if (authResultIsPositive(result)) {
       return { ...(result || {}), authorized: true, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'authorized' };
     }
+    return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || fallbackStatus };
+  };
 
-    // During fresh Telegram login some servers confirm the temporary auth
-    // session only through /auth/session. Allow that fallback only while polling
-    // a newly created session, never for automatic app startup access.
-    if (!allowSessionFallback) {
-      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
-    }
-  } catch (e) {
-    if (!allowSessionFallback) {
-      return { authorized: false, status: 'status_unavailable', error: String(e?.message || e) };
+  // Correct model:
+  // - The app sends only a server-issued token/session.
+  // - The backend resolves Telegram ID from that token.
+  // - The backend checks Telegram channel membership itself.
+  // - The app never sends telegramUserId/userId as proof of access.
+  const liveChecks = [
+    () => tryFetch('/auth/status', { method: 'GET', headers: authHeaders, cache: 'no-store' }),
+    () => tryFetch('/auth/me/status', { method: 'GET', headers: authHeaders, cache: 'no-store' }),
+    () => tryFetch('/auth/check', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, body: JSON.stringify({ platform: 'android', source: 'mobile' }) }),
+    // Backward compatibility with the current backend: path value is the session token, not Telegram ID.
+    () => tryFetch(`/auth/status/${safe}`, { method: 'GET', headers: authHeaders, cache: 'no-store' })
+  ];
+
+  let lastError = null;
+  for (const check of liveChecks) {
+    try {
+      const result = await check();
+      const normalized = normalizeAuthResponse(result, 'not_subscribed');
+      if (normalized.authorized || authResultHasHardReject(result)) return normalized;
+      lastError = normalized;
+    } catch (e) {
+      lastError = { authorized: false, status: 'status_unavailable', error: String(e?.message || e) };
     }
   }
 
+  // /auth/session is only for a just-created Telegram login flow. It must never
+  // be used for automatic startup access, because it can confirm an old session
+  // without proving current channel membership.
+  if (!allowSessionFallback) {
+    return lastError || { authorized: false, status: 'not_subscribed' };
+  }
+
   try {
-    const sessionResult = await tryFetch(`/auth/session/${safe}`);
-    if (authResultHasHardReject(sessionResult)) {
-      return { ...(sessionResult || {}), authorized: false, status: sessionResult?.status || sessionResult?.state || sessionResult?.data?.status || sessionResult?.data?.state || 'not_subscribed' };
-    }
-    if (authResultIsPositive(sessionResult)) {
-      return { ...(sessionResult || {}), authorized: true, status: sessionResult?.status || sessionResult?.state || sessionResult?.data?.status || sessionResult?.data?.state || 'authorized' };
-    }
-    return { ...(sessionResult || {}), authorized: false, status: sessionResult?.status || sessionResult?.state || sessionResult?.data?.status || sessionResult?.data?.state || 'pending' };
+    const sessionResult = await tryFetch(`/auth/session/${safe}`, { method: 'GET', headers: authHeaders, cache: 'no-store' });
+    return normalizeAuthResponse(sessionResult, 'pending');
   } catch (e) {
     return { authorized: false, status: 'pending', error: String(e?.message || e) };
   }
