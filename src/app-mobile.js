@@ -23,7 +23,7 @@ const VISUAL_RUNTIME = {
 const AUTH_POLL_MAX_MS = 90 * 1000;
 const AUTH_POLL_INTERVAL_MS = 2500;
 const AUTH_STARTUP_CHECK_TIMEOUT_MS = 7000;
-const AUTH_RECHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const AUTH_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 let authPollActive = false;
 let authClickLockedUntil = 0;
 let authTapInProgress = false;
@@ -391,6 +391,9 @@ async function resumeAppState(){
   if(stamp-lastLifecycleResumeAt<800) return;
   lastLifecycleResumeAt=stamp;
   state.settings=await window.alterE.settings.get().catch(()=>state.settings);
+  if(state.settings?.authorized && state.settings?.authToken){
+    await validateStoredAuthorization({force:true, startup:false});
+  }
   PERF.nativeProfile=await window.alterE?.performance?.profile?.().catch(()=>PERF.nativeProfile) || PERF.nativeProfile;
   document.body.dataset.theme=state.settings?.theme||'dark';
   document.documentElement.dataset.theme=state.settings?.theme||'dark';
@@ -483,7 +486,7 @@ async function init(){
   fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';fileInput.hidden=true;document.body.appendChild(fileInput);
   fileInput.addEventListener('change',()=>{const f=fileInput.files?.[0];markExternalTransition('file',false);if(f)handleFile(f);else saveUiSnapshotSoon();});
   bind();bindLifecycleResume();applyText();
-  await validateStoredAuthorization({startup:true});
+  await validateStoredAuthorization({force:true, startup:true});
   renderAuth();renderVideo();renderLogs();
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){pollAuthorization(state.settings.pendingAuthToken,{silent:true});}
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
@@ -690,7 +693,9 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
   if(!state.settings?.authorized || !token) return false;
 
   const last=Number(state.settings?.lastAuthVerifiedAt || localStorage.getItem('alter_last_auth_verified_at') || 0);
-  if(!force && last && nowMs()-last < AUTH_RECHECK_INTERVAL_MS){
+  // On cold startup the app must always ask the server again. The local
+  // flag only stores the Telegram token; it must never decide channel access.
+  if(!force && !startup && last && nowMs()-last < AUTH_RECHECK_INTERVAL_MS){
     return true;
   }
 
@@ -713,10 +718,27 @@ async function validateStoredAuthorization({force=false, startup=false}={}){
     return true;
   }
 
-  // Do not force Telegram login again on soft/temporary states for an already
-  // authorized user. Old sessions can return pending/expired/timeout while the
-  // actual Telegram channel membership is still valid. Lock only on explicit
-  // server denial: not subscribed, blocked, banned, denied, etc.
+  // During application startup a saved local authorization is not enough.
+  // If the server did not explicitly confirm membership, keep the saved token
+  // but lock the UI until the user passes Telegram verification again. This
+  // prevents unsubscribed users from entering with an old local cache.
+  if(startup && !isServerAuthorized(st)){
+    localStorage.removeItem('alter_last_auth_verified_at');
+    state.settings=await window.alterE.settings.update({
+      authorized:false,
+      authInProgress:false,
+      pendingAuthToken:'',
+      pendingAuthUrl:'',
+      pendingAuthStartedAt:0,
+      authStartedAt:0,
+      lastAuthVerifiedAt:0
+    }).catch(()=>({...state.settings,authorized:false,lastAuthVerifiedAt:0}));
+    return false;
+  }
+
+  // Do not force Telegram login again on soft/temporary states during normal
+  // in-app resume checks. Lock only on explicit server denial: not subscribed,
+  // blocked, banned, denied, etc.
   if(isAuthExplicitlyRejected(st)){
     localStorage.removeItem('alter_last_auth_verified_at');
     state.settings=await window.alterE.settings.update({

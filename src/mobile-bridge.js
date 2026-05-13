@@ -288,9 +288,11 @@ async function getAuthStatus(token) {
   const safe = encodeURIComponent(token);
   const endpoints = [`/auth/session/${safe}`, `/auth/status/${safe}`];
   let lastError = null;
+  let lastResult = null;
   for (const endpoint of endpoints) {
     try {
       const result = await tryFetch(endpoint);
+      lastResult = result;
       const status = String(result?.status || result?.state || result?.result || '').toLowerCase();
       const nestedStatus = String(result?.data?.status || result?.data?.state || result?.data?.result || '').toLowerCase();
       const negativeStatus = ['pending', 'waiting', 'created', 'new', 'requested', 'unauthorized', 'not_authorized', 'denied', 'expired', 'false', 'error'].includes(status)
@@ -315,9 +317,13 @@ async function getAuthStatus(token) {
       if (!negativeStatus && (positiveStatus || positiveFlag)) {
         return { ...result, authorized: true, status: 'authorized' };
       }
-
-      return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'pending' };
+      // Do not return after the first negative answer. Some backends keep
+      // /auth/session for the one-time login flow and expose the actual saved
+      // membership state through /auth/status. Try every known endpoint first.
     } catch (e) { lastError = e; }
+  }
+  if (lastResult) {
+    return { ...(lastResult || {}), authorized: false, status: lastResult?.status || lastResult?.state || lastResult?.data?.status || lastResult?.data?.state || 'pending' };
   }
   throw lastError || new Error('auth_status_failed');
 }
