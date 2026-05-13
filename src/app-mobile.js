@@ -658,12 +658,25 @@ async function clearStaleAuthProgress(){
   resetAuthButtonState();
 }
 
+function isServerBlockedOrUnsubscribed(st){
+  if(!st || typeof st !== 'object') return false;
+  const values = [st.status, st.state, st.result, st.reason, st.error, st.data?.status, st.data?.state, st.data?.reason, st.data?.error]
+    .map(v=>String(v||'').toLowerCase());
+  return values.some(v=>['blocked','banned','ban','blacklisted','unsubscribed','not_subscribed','not_member','subscription_required','denied'].includes(v));
+}
+
 async function validateStoredAuthorization(){
   const token=state.settings?.authToken||'';
   if(!state.settings?.authorized||!token)return;
   const st=await window.alterE.auth.status(token).catch(()=>null);
-  const ok=isServerAuthorized(st);
-  if(!ok){
+  if(isServerAuthorized(st)){
+    state.settings=await window.alterE.settings.update({authorized:true,authToken:token,lastAuthCheckAt:Date.now()});
+    return;
+  }
+  // Do not force Telegram login again on every restart because of a temporary
+  // pending/expired/network response. Only lock the app when the server clearly
+  // says the user is unsubscribed or blocked.
+  if(isServerBlockedOrUnsubscribed(st)){
     state.settings=await window.alterE.settings.update({authorized:false,authToken:''});
   }
 }
@@ -759,7 +772,9 @@ function renderVideo(){
 }
 async function handleFile(file){
   const ext=file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-  if(!['.mp4','.mov'].includes(ext)){toast(t('unsupported'));resetFilePicker();markExternalTransition('file',false);return}
+  const type=String(file?.type||'').toLowerCase();
+  const probablyMp4Mov = ['.mp4','.mov'].includes(ext) || ['video/mp4','video/quicktime','video/mov','video/x-m4v'].includes(type);
+  if(!probablyMp4Mov){toast(t('unsupported'));resetFilePicker();markExternalTransition('file',false);return}
   if(isVideoTooLarge(file)){showTooLargeToast();log('error','videoTooLarge',file.name);resetFilePicker();markExternalTransition('file',false);return}
   state.file=file;
   state.fileUrl=window.alterMobile.setSelectedFile(file);
@@ -785,7 +800,7 @@ async function patch(){
     log('success','saved',r.outputPath);
   }catch(e){
     const raw=String(e?.message||e);
-    const m=/not supported for patching|format is not supported/i.test(raw)?t('unsupportedPatchFormat'):raw;
+    const m=/Only MP4 and MOV are supported/i.test(raw)?t('unsupportedPatchFormat'):raw;
     toast(t('failed'),m);
     log('error','failed',m);
   }finally{

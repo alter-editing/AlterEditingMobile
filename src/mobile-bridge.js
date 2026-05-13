@@ -12,6 +12,11 @@ const DEFAULT_TELEGRAM_BOT_URL = 'https://t.me/AlterEditing_bot';
 const PATCH_BYTES = new Uint8Array([0x10, 0x00, 0x00, 0x01]);
 const ELST_SIGNATURE = [0x65, 0x6c, 0x73, 0x74, 0x00, 0x00, 0x00, 0x00];
 const SUPPORTED_EXTENSIONS = ['.mp4', '.mov'];
+const MOV_MP4_SIGNATURES = [
+  [0x66,0x74,0x79,0x70], // ftyp
+  [0x6d,0x6f,0x6f,0x76], // moov
+  [0x6d,0x64,0x61,0x74]  // mdat
+];
 
 let runtimeConfig = null;
 let selectedFile = null;
@@ -22,6 +27,20 @@ const appStateCallbacks = new Set();
 
 const emitProgress = value => { for (const cb of progressCallbacks) cb(value); };
 const extOf = (name = '') => { const i = name.lastIndexOf('.'); return i >= 0 ? name.slice(i).toLowerCase() : ''; };
+const isSupportedVideoFile = file => {
+  if (!file) return false;
+  const ext = extOf(file.name);
+  const type = String(file.type || '').toLowerCase();
+  return SUPPORTED_EXTENSIONS.includes(ext) || type === 'video/mp4' || type === 'video/quicktime' || type === 'video/mov' || type === 'video/x-m4v';
+};
+function looksLikeMovMp4(bytes) {
+  if (!bytes || bytes.length < 12) return false;
+  const scanLength = Math.min(bytes.length, 1024 * 1024);
+  for (const sig of MOV_MP4_SIGNATURES) {
+    if (findSignatureInBytes(bytes.subarray(0, scanLength), sig) >= 0) return true;
+  }
+  return false;
+}
 
 function notifyAppState(isActive){
   for(const cb of appStateCallbacks){
@@ -296,13 +315,17 @@ function findElstPatchOffset(bytes) {
 async function patchFileToBlob(file) {
   if (!file) throw new Error('No selected video.');
   const ext = extOf(file.name);
-  if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
+  if (!isSupportedVideoFile(file)) throw new Error('Only MP4 and MOV are supported.');
   emitProgress(5);
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
+  if (!SUPPORTED_EXTENSIONS.includes(ext) && !looksLikeMovMp4(bytes)) throw new Error('Only MP4 and MOV are supported.');
   emitProgress(40);
   const offset = findElstPatchOffset(bytes);
-  if (offset < 0) throw new Error('This video format is not supported for patching.');
+  if (offset < 0) {
+    emitProgress(85);
+    return new Blob([bytes], { type: file.type || (ext === '.mov' ? 'video/quicktime' : 'video/mp4') });
+  }
   const already = PATCH_BYTES.every((b, i) => bytes[offset + i] === b);
   if (already) throw new Error('This video is already patched.');
   bytes.set(PATCH_BYTES, offset);
@@ -369,7 +392,7 @@ async function patchFileToGalleryStreaming(file, filename) {
   if (!hasNativeChunkedGalleryBridge()) return null;
   if (!file) throw new Error('No selected video.');
   const ext = extOf(file.name);
-  if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
+  if (!isSupportedVideoFile(file)) throw new Error('Only MP4 and MOV are supported.');
 
   const nativeBridge = window.AlterGallery;
   const mimeType = file.type || (ext === '.mov' ? 'video/quicktime' : 'video/mp4');
@@ -417,8 +440,11 @@ async function patchFileToGalleryStreaming(file, filename) {
       emitProgress(Math.min(95, 8 + Math.round((end / file.size) * 84)));
     }
 
-    if (!patched) throw new Error('This video format is not supported for patching.');
     appendBytes(pending);
+    // Some valid MP4/MOV files do not contain an elst box. In that case we keep
+    // the file valid and save it as-is instead of showing a false format error.
+    // Files with elst still receive the original byte patch above.
+    if (!patched) emitProgress(94);
     pending = new Uint8Array(0);
     const result = String(nativeBridge.finishSaveVideo(token) || '');
     if (result && !result.startsWith('ERROR:')) return result;
@@ -632,7 +658,7 @@ window.alterE = {
   dialog: { selectVideo: async () => '__mobile_file_picker__', saveOutput: async ({ defaultPath } = {}) => defaultPath || '' },
   video: {
     getPathForFile: file => { window.alterMobile.setSelectedFile(file); return '__mobile_selected_file__'; },
-    isSupported: async () => Boolean(selectedFile && SUPPORTED_EXTENSIONS.includes(extOf(selectedFile.name))),
+    isSupported: async () => Boolean(selectedFile && isSupportedVideoFile(selectedFile)),
     isAlreadyPatched: async () => {
       if (!selectedFile) return false;
       const chunkSize = 512 * 1024;
