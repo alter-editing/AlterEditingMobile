@@ -371,7 +371,9 @@ async function pollAuthorization(token,{silent=false}={}){
     const started=nowMs();
     while(nowMs()-started < AUTH_POLL_MAX_MS){
       const fresh=await window.alterE.settings.get().catch(()=>state.settings);
-      if(fresh?.authorized) { state.settings=fresh; state.externalAuthActive=false; document.body.classList.remove('is-external-transition'); renderAuth(); saveUiSnapshot(); return true; }
+      // Never trust the local authorized flag while polling. A saved flag can be
+      // stale after the user unsubscribed, so every success must come from the
+      // live server status below.
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
       const st=await window.alterE.auth.status(token).catch(()=>null);
       if(isServerAuthorized(st)){

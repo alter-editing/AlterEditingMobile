@@ -324,36 +324,27 @@ function authResultIsPositive(result) {
 async function getAuthStatus(token) {
   if (!token) throw new Error('missing_auth_token');
   const safe = encodeURIComponent(token);
-  // Important: /auth/status is the live subscription check. /auth/session can
-  // stay authorized after first login, so it must not override a later unsubscribe.
-  const endpoints = [`/auth/status/${safe}`, `/auth/session/${safe}`];
-  let lastError = null;
-  let lastResult = null;
-  let positiveResult = null;
 
-  for (const endpoint of endpoints) {
-    try {
-      const result = await tryFetch(endpoint);
-      lastResult = result;
-
-      if (authResultHasHardReject(result)) {
-        return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
-      }
-
-      if (authResultIsPositive(result)) {
-        positiveResult = positiveResult || result;
-        // Continue checking the remaining endpoint. If /auth/session says ok but
-        // /auth/status says unsubscribed, the hard reject above must win.
-        continue;
-      }
-    } catch (e) { lastError = e; }
+  // STRICT MODE:
+  // Only /auth/status is allowed to decide access after app start/resume.
+  // Do not use /auth/session here: that endpoint can keep returning an old
+  // successful session even after the user unsubscribed from the Telegram channel.
+  let result = null;
+  try {
+    result = await tryFetch(`/auth/status/${safe}`);
+  } catch (e) {
+    return { authorized: false, status: 'status_unavailable', error: String(e?.message || e) };
   }
 
-  if (positiveResult) return { ...positiveResult, authorized: true, status: 'authorized' };
-  if (lastResult) {
-    return { ...(lastResult || {}), authorized: false, status: lastResult?.status || lastResult?.state || lastResult?.data?.status || lastResult?.data?.state || 'pending' };
+  if (authResultHasHardReject(result)) {
+    return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
   }
-  throw lastError || new Error('auth_status_failed');
+
+  if (authResultIsPositive(result)) {
+    return { ...(result || {}), authorized: true, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'authorized' };
+  }
+
+  return { ...(result || {}), authorized: false, status: result?.status || result?.state || result?.data?.status || result?.data?.state || 'not_subscribed' };
 }
 
 function findElstPatchOffset(bytes) {
