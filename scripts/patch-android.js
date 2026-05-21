@@ -1331,3 +1331,188 @@ console.log('Android cleartext/network config patched.');
     console.warn('[WARN] Brave-only post patch skipped:', e && e.message ? e.message : e);
   }
 })();
+
+// === V5 HEVC/H.265 fallback: FFmpegKit bridge for native HEVC -> H.264 conversion ===
+(function addV5TranscodeFallback(){
+  try {
+    const gradlePath = path.join('android', 'app', 'build.gradle');
+    if (fs.existsSync(gradlePath)) {
+      let gradle = fs.readFileSync(gradlePath, 'utf8');
+      if (!/ffmpeg-kit-full-gpl/.test(gradle)) {
+        gradle = gradle.replace(/dependencies\s*\{/, 'dependencies {\n    implementation "com.arthenica:ffmpeg-kit-full-gpl:6.0-2"');
+      }
+      fs.writeFileSync(gradlePath, gradle, 'utf8');
+    }
+
+    const settingsPath = path.join('android', 'settings.gradle');
+    if (fs.existsSync(settingsPath)) {
+      let settings = fs.readFileSync(settingsPath, 'utf8');
+      if (!/mavenCentral\(\)/.test(settings)) {
+        settings = settings.replace(/repositories\s*\{/, 'repositories {\n        mavenCentral()');
+      }
+      fs.writeFileSync(settingsPath, settings, 'utf8');
+    }
+
+    function walk(dir, found = []) {
+      if (!fs.existsSync(dir)) return found;
+      for (const item of fs.readdirSync(dir)) {
+        const full = path.join(dir, item);
+        if (fs.statSync(full).isDirectory()) walk(full, found);
+        else found.push(full);
+      }
+      return found;
+    }
+    const javaRoot = path.join('android', 'app', 'src', 'main', 'java');
+    const mainActivityPath = walk(javaRoot).find(p => /MainActivity\.java$/.test(p));
+    if (!mainActivityPath) return;
+    let main = fs.readFileSync(mainActivityPath, 'utf8');
+    const pkgMatch = main.match(/package\s+([\w.]+);/);
+    const packageName = pkgMatch ? pkgMatch[1] : 'com.alterediting.method';
+    const packageDir = mainActivityPath.slice(0, mainActivityPath.lastIndexOf(path.sep));
+    if (!main.includes('AlterTranscode')) {
+      main = main.replace('getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");', 'getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");\n        getBridge().getWebView().addJavascriptInterface(new TranscodeBridge(this), "AlterTranscode");');
+      fs.writeFileSync(mainActivityPath, main, 'utf8');
+    }
+
+    fs.writeFileSync(path.join(packageDir, 'TranscodeBridge.java'), `package ${packageName};
+
+import android.content.Context;
+import android.util.Base64;
+import android.webkit.JavascriptInterface;
+import com.arthenica.ffmpegkit.FFmpegKit;
+import com.arthenica.ffmpegkit.ReturnCode;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public class TranscodeBridge {
+    private final Context context;
+    private final Map<String, Session> sessions = new HashMap<>();
+
+    private static class Session {
+        File input;
+        File output;
+        FileOutputStream inputStream;
+        Session(File input, File output, FileOutputStream inputStream) {
+            this.input = input;
+            this.output = output;
+            this.inputStream = inputStream;
+        }
+    }
+
+    public TranscodeBridge(Context context) {
+        this.context = context.getApplicationContext();
+    }
+
+    private String safeName(String name) {
+        if (name == null || name.trim().isEmpty()) return "input.mp4";
+        return name.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    @JavascriptInterface
+    public synchronized String beginTranscode(String filename, String mimeType) {
+        try {
+            String token = UUID.randomUUID().toString();
+            File dir = new File(context.getCacheDir(), "alter_transcode");
+            if (!dir.exists()) dir.mkdirs();
+            File input = new File(dir, token + "_" + safeName(filename));
+            File output = new File(dir, token + "_h264.mp4");
+            FileOutputStream stream = new FileOutputStream(input);
+            sessions.put(token, new Session(input, output, stream));
+            return token;
+        } catch (Exception e) {
+            return "ERROR:" + e.getMessage();
+        }
+    }
+
+    @JavascriptInterface
+    public synchronized String appendInputChunk(String token, String base64Chunk) {
+        Session s = sessions.get(token);
+        if (s == null) return "ERROR:session_not_found";
+        try {
+            byte[] bytes = Base64.decode(base64Chunk, Base64.DEFAULT);
+            s.inputStream.write(bytes);
+            return "OK";
+        } catch (Exception e) {
+            return "ERROR:" + e.getMessage();
+        }
+    }
+
+    @JavascriptInterface
+    public synchronized String finishTranscode(String token) {
+        Session s = sessions.get(token);
+        if (s == null) return "ERROR:session_not_found";
+        try {
+            s.inputStream.flush();
+            s.inputStream.close();
+            String cmd = "-y -hide_banner -loglevel error -i " + q(s.input.getAbsolutePath()) +
+                " -map 0:v:0 -map 0:a? -c:v libx264 -preset veryfast -crf 18 -profile:v high -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart " + q(s.output.getAbsolutePath());
+            com.arthenica.ffmpegkit.Session ff = FFmpegKit.execute(cmd);
+            ReturnCode rc = ff.getReturnCode();
+            if (!ReturnCode.isSuccess(rc)) {
+                String logs = ff.getAllLogsAsString();
+                if (logs == null || logs.trim().isEmpty()) logs = "ffmpeg_transcode_failed";
+                if (logs.length() > 700) logs = logs.substring(logs.length() - 700);
+                return "ERROR:" + logs;
+            }
+            if (!s.output.exists() || s.output.length() <= 0) return "ERROR:empty_transcode_output";
+            return "OK";
+        } catch (Exception e) {
+            return "ERROR:" + e.getMessage();
+        }
+    }
+
+    private String q(String v) { return "'" + v.replace("'", "'\\''") + "'"; }
+
+    @JavascriptInterface
+    public synchronized long getResultSize(String token) {
+        Session s = sessions.get(token);
+        if (s == null || s.output == null || !s.output.exists()) return 0;
+        return s.output.length();
+    }
+
+    @JavascriptInterface
+    public synchronized String readResultChunk(String token, int offset, int length) {
+        Session s = sessions.get(token);
+        if (s == null || s.output == null || !s.output.exists()) return "ERROR:session_not_found";
+        try {
+            if (length < 0) length = 0;
+            if (length > 128 * 1024) length = 128 * 1024;
+            byte[] buf = new byte[length];
+            FileInputStream in = new FileInputStream(s.output);
+            long skipped = in.skip(offset);
+            if (skipped < offset) { in.close(); return ""; }
+            int n = in.read(buf);
+            in.close();
+            if (n <= 0) return "";
+            if (n != buf.length) {
+                byte[] exact = new byte[n];
+                System.arraycopy(buf, 0, exact, 0, n);
+                buf = exact;
+            }
+            return Base64.encodeToString(buf, Base64.NO_WRAP);
+        } catch (Exception e) {
+            return "ERROR:" + e.getMessage();
+        }
+    }
+
+    @JavascriptInterface
+    public synchronized String releaseResult(String token) {
+        Session s = sessions.remove(token);
+        if (s == null) return "OK";
+        try { if (s.inputStream != null) s.inputStream.close(); } catch (Exception ignored) {}
+        try { if (s.input != null) s.input.delete(); } catch (Exception ignored) {}
+        try { if (s.output != null) s.output.delete(); } catch (Exception ignored) {}
+        return "OK";
+    }
+}
+`, 'utf8');
+    console.log('[OK] V5 HEVC fallback TranscodeBridge added.');
+  } catch (e) {
+    console.warn('[WARN] V5 HEVC fallback patch skipped:', e && e.message ? e.message : e);
+  }
+})();
