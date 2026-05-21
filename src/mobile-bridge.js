@@ -291,7 +291,9 @@ async function nativeNormalizeForV5(file, mode = 'copy') {
   if (!hasNativeTranscodeBridge()) {
     throw new Error('Desktop V5 normalizer is unavailable in this APK. Rebuild the Android project with scripts/patch-android.js so FFmpegKit bridge is added.');
   }
-  emitProgress(mode === 'copy' ? 8 : 6);
+  const isCopyMode = mode === 'copy';
+  const isX264Stage = mode === 'x264' || mode === 'x264raw';
+  emitProgress(isCopyMode ? 8 : 6);
   const begin = typeof bridge.beginV5Process === 'function'
     ? bridge.beginV5Process(file.name || 'input.mp4', file.type || 'video/mp4', mode)
     : bridge.beginTranscode(file.name || 'input.mp4', file.type || 'video/mp4');
@@ -305,10 +307,10 @@ async function nativeNormalizeForV5(file, mode = 'copy') {
       if (part !== 'OK') throw new Error(part.replace(/^ERROR:/, '') || 'v5_normalize_chunk_failed');
       if ((i & ((64 * 1024 * 8) - 1)) === 0) emitProgress(8 + Math.round((i / Math.max(1, base64.length)) * 17));
     }
-    emitProgress(mode === 'copy' ? 28 : 25);
+    emitProgress(isCopyMode ? 28 : 25);
     const done = String(bridge.finishTranscode(token) || '');
     if (done.startsWith('ERROR:')) throw new Error(done.replace(/^ERROR:/, '') || 'v5_normalize_failed');
-    emitProgress(mode === 'copy' ? 42 : 45);
+    emitProgress(isCopyMode ? 42 : 45);
     const size = Number(bridge.getResultSize(token) || 0);
     if (!Number.isFinite(size) || size <= 0) throw new Error('v5_normalize_empty_result');
     const outParts = [];
@@ -322,7 +324,7 @@ async function nativeNormalizeForV5(file, mode = 'copy') {
       outParts.push(bytes);
       emitProgress(45 + Math.round((offset / Math.max(1, size)) * 10));
     }
-    const suffix = mode === 'copy' ? '_v5tmp.mp4' : '_h264_v5tmp.mp4';
+    const suffix = isCopyMode ? '_v5tmp.mp4' : '_h264_stage.mp4';
     return new File(outParts, (file.name || 'video.mp4').replace(/\.(mov|mp4)$/i, suffix), { type: 'video/mp4' });
   } finally {
     try { bridge.releaseResult(token); } catch (_) {}
@@ -337,16 +339,28 @@ async function patchFileToBlob(file) {
   emitProgress(5);
 
   // Exact desktop V5 chain on mobile:
-  // 1) If source is already AVC/H.264: FFmpeg copy remux with the same PC args.
-  // 2) If source is HEVC/H.265: software libx264 render with the same container normalization.
-  // 3) Run the same binary V5 NAL/table patch on that normalized temp file.
+  // 1) H.264 input: run the same PC pre-remux: video first, audio second, copy, 90k timescale, metadata cleared, brand isom, faststart.
+  // 2) HEVC/H.265 input: FIRST render to a temporary AVC/H.264 file with software libx264.
+  // 3) Then run the same PC pre-remux on that H.264 temp. This second stage is mandatory: it makes stream order, handler names, time_base, brands and metadata match the PC patcher instead of Android encoder fingerprints.
+  // 4) Run the same binary V5 NAL/table patch on the PC-normalized temp and save only that final file.
   const isH264 = await isV5H264CompatibleFile(file).catch(() => false);
-  const normalized = await nativeNormalizeForV5(file, isH264 ? 'copy' : 'x264');
+  let h264Source = file;
+  if (!isH264) {
+    emitProgress(12);
+    h264Source = await nativeNormalizeForV5(file, 'x264raw');
+    const renderedCompatible = await isV5H264CompatibleFile(h264Source).catch(() => false);
+    if (!renderedCompatible) {
+      throw new Error('HEVC to H.264 render did not produce AVC/H.264. Check that libs/ffmpeg-kit-full-gpl.aar is included in the APK and contains libx264.');
+    }
+    emitProgress(44);
+  }
+
+  const normalized = await nativeNormalizeForV5(h264Source, 'copy');
   emitProgress(58);
 
   const compatible = await isV5H264CompatibleFile(normalized).catch(() => false);
   if (!compatible) {
-    throw new Error('V5 normalize stage did not produce AVC/H.264. Check that libs/ffmpeg-kit-full-gpl.aar is included in the APK and contains libx264.');
+    throw new Error('V5 pre-remux stage did not produce AVC/H.264.');
   }
 
   return runV5MobilePatcher(normalized, { onProgress: (p) => emitProgress(58 + Math.round((Number(p) || 0) * 0.42)) });

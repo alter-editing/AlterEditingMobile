@@ -380,6 +380,7 @@ async function completeAuthorization(token){
 async function pollAuthorization(token,{silent=false}={}){
   if(!token || authPollActive) return false;
   authPollActive=true;
+  let completed=false;
   const b=$('authButton');
   if(b) b.disabled=true;
   if(!silent && $('authText')) $('authText').textContent=t('authWaiting');
@@ -387,10 +388,18 @@ async function pollAuthorization(token,{silent=false}={}){
     const started=nowMs();
     while(nowMs()-started < AUTH_POLL_MAX_MS){
       const fresh=await window.alterE.settings.get().catch(()=>state.settings);
-      if(fresh?.authorized) { state.settings=fresh; state.externalAuthActive=false; document.body.classList.remove('is-external-transition'); renderAuth(); saveUiSnapshot(); return true; }
+      if(fresh?.authorized) {
+        completed=true;
+        state.settings=fresh;
+        markExternalTransition('auth', false);
+        renderAuth();
+        saveUiSnapshot();
+        return true;
+      }
       if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
       const st=await window.alterE.auth.status(token).catch(()=>null);
       if(isServerAuthorized(st)){
+        completed=true;
         await completeAuthorization(token);
         return true;
       }
@@ -400,6 +409,10 @@ async function pollAuthorization(token,{silent=false}={}){
   }finally{
     authPollActive=false;
     if(b) b.disabled=false;
+    if(!completed){
+      markExternalTransition('auth', false);
+      saveUiSnapshotSoon?.();
+    }
   }
 }
 async function resumeAppState(){
@@ -415,7 +428,12 @@ async function resumeAppState(){
   renderAuth();
   setTimeout(()=>checkAppUpdateSoon({force:true}), 700);
   if(state.file) renderVideo();
-  setTimeout(()=>{ if(state.filePickerActive){ state.filePickerActive=false; document.body.classList.remove('is-external-transition'); saveUiSnapshotSoon(); } },1200);
+  setTimeout(()=>{
+    if(state.filePickerActive){
+      markExternalTransition('file', false);
+      saveUiSnapshotSoon();
+    }
+  },1200);
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){
     if($('authText')) $('authText').textContent=t('authWaiting');
     pollAuthorization(state.settings.pendingAuthToken,{silent:true});
@@ -947,14 +965,16 @@ async function authorize(){
     });
 
     saveUiSnapshotSoon?.();
-    markExternalTransition('external', true);
+    // Keep the foreground service alive while Telegram is open and while auth polling runs.
+    // Older Samsung/Android builds can kill or recreate WebView if we stop this too early.
+    markExternalTransition('auth', true);
     await window.alterE.shell.openExternal(telegramUrl);
-    setTimeout(()=>markExternalTransition('external', false), 900);
 
     toast(t('authWaiting'), '');
     pollAuthorization(token, {silent:true});
   }catch(e){
     resetAuthButtonState();
+    markExternalTransition('auth', false);
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',

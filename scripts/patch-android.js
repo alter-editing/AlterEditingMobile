@@ -205,6 +205,9 @@ manifest = manifest.replace(/<activity\b([^>]*android:name="[^"]*MainActivity"[^
   };
   setAttr('android:launchMode', 'singleTask');
   setAttr('android:alwaysRetainTaskState', 'true');
+  setAttr('android:finishOnTaskLaunch', 'false');
+  setAttr('android:clearTaskOnLaunch', 'false');
+  setAttr('android:stateNotNeeded', 'false');
   setAttr('android:configChanges', 'orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode');
   return `<activity${next}>`;
 });
@@ -562,8 +565,9 @@ public class KeepAliveService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        stopForegroundCompat();
-        stopSelf();
+        // Keep the foreground service alive for a short period even if Android
+        // temporarily removes the task while external apps/pickers are active.
+        // It is stopped explicitly from JS when the app returns or the operation ends.
         super.onTaskRemoved(rootIntent);
     }
 
@@ -1528,9 +1532,10 @@ public class TranscodeBridge {
             s.inputStream.close();
 
             // Desktop V5-compatible normalizer.
-            // copy mode matches the PC pre-remux exactly:
+            // copy mode is byte-for-byte equivalent in intent to the PC pre-remux stage:
             // ffmpeg -map 0:v:0 -map 0:a? -c copy -video_track_timescale 90000 -map_metadata -1 -brand isom -movflags +faststart
-            // x264 mode is used only when the source is HEVC/H.265 and must become real AVC/H.264 before V5.
+            // x264raw mode is used only for HEVC/H.265 input. It creates a temporary real AVC/H.264 file.
+            // The JS chain then runs copy mode on that temp file, so final metadata/order/timebase comes from the exact PC-style remux stage, not from Android/MediaCodec.
             String[] args;
             if ("copy".equals(s.mode)) {
                 args = new String[] {
@@ -1562,10 +1567,6 @@ public class TranscodeBridge {
                     "-pix_fmt", "yuv420p",
                     "-c:a", "aac",
                     "-b:a", "192k",
-                    "-video_track_timescale", "90000",
-                    "-map_metadata", "-1",
-                    "-brand", "isom",
-                    "-movflags", "+faststart",
                     s.output.getAbsolutePath()
                 };
             }
