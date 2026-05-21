@@ -815,6 +815,103 @@ async function handleFile(file){
   log('info','loaded',file.name);
   toast(t('loaded'),file.name);
 }
+
+function bytesToBase64(bytes){
+  let binary='';
+  const step=0x8000;
+  for(let i=0;i<bytes.length;i+=step){
+    binary+=String.fromCharCode.apply(null, bytes.subarray(i,i+step));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64){
+  const binary=atob(base64);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+
+async function transcodeSelectedVideoToH264(file){
+  const bridge=window.AlterTranscode;
+  if(!bridge || typeof bridge.beginTranscode!=='function'){
+    throw new Error('HEVC fallback is not available in this APK.');
+  }
+
+  const token=bridge.beginTranscode(file.name || 'input.mp4', file.type || 'video/mp4');
+  if(!token || String(token).startsWith('ERROR:')) throw new Error(String(token || 'transcode_begin_failed'));
+
+  const inputChunkSize=128 * 1024;
+  try{
+    for(let offset=0; offset<file.size; offset+=inputChunkSize){
+      const slice=file.slice(offset, Math.min(file.size, offset + inputChunkSize));
+      const bytes=new Uint8Array(await slice.arrayBuffer());
+      const res=bridge.appendInputChunk(token, bytesToBase64(bytes));
+      if(res !== 'OK') throw new Error(String(res || 'transcode_append_failed'));
+      const progress=Math.min(35, Math.round((offset / Math.max(1,file.size)) * 35));
+      window.alterE?.video?.onProgress?.(()=>{});
+      $('patchProgress')?.style.setProperty('--progress',`${progress}%`);
+    }
+
+    toast(t('started'), 'HEVC/H.265 → H.264...');
+    log('info','started','HEVC/H.265 → H.264');
+    const finish=bridge.finishTranscode(token);
+    if(finish !== 'OK') throw new Error(String(finish || 'transcode_failed'));
+
+    const total=Number(bridge.getResultSize(token) || 0);
+    if(!total) throw new Error('empty_transcode_output');
+
+    const outputChunks=[];
+    const outputChunkSize=128 * 1024;
+    for(let offset=0; offset<total; offset+=outputChunkSize){
+      const b64=bridge.readResultChunk(token, offset, outputChunkSize);
+      if(String(b64).startsWith('ERROR:')) throw new Error(String(b64));
+      if(!b64) break;
+      outputChunks.push(base64ToBytes(b64));
+      const progress=35 + Math.min(40, Math.round((offset / Math.max(1,total)) * 40));
+      $('patchProgress')?.style.setProperty('--progress',`${progress}%`);
+    }
+
+    const outName=(file.name || 'video.mp4').replace(/\.(mov|mp4)$/i,'') + '_h264.mp4';
+    return new File(outputChunks, outName, {type:'video/mp4'});
+  } finally {
+    try{ bridge.releaseResult(token); }catch(_){}
+  }
+}
+
+function isV5H264OnlyError(error){
+  const raw=String(error?.message || error || '');
+  return /V5 supports only H\.264\/AVC|supports only H\.264|H\.265|HEVC|h265|hevc/i.test(raw);
+}
+
+async function runPatchWithHevcFallback(){
+  try{
+    return await window.alterE.video.patch({});
+  }catch(e){
+    if(!isV5H264OnlyError(e)) throw e;
+
+    log('info','started','HEVC/H.265 detected. Transcoding to H.264.');
+    toast('HEVC/H.265', 'Конвертация в H.264...');
+
+    const originalFile=state.file;
+    const h264File=await transcodeSelectedVideoToH264(originalFile);
+
+    const validContainer = await hasValidMp4MovStructure(h264File).catch(()=>false);
+    if(!validContainer) throw new Error(t('unsupportedPatchFormat'));
+
+    state.file=h264File;
+    try{
+      state.fileUrl=window.alterMobile.setSelectedFile(h264File);
+      renderVideo();
+      log('info','loaded',h264File.name);
+      $('patchProgress')?.style.setProperty('--progress','78%');
+      return await window.alterE.video.patch({});
+    }catch(secondError){
+      throw secondError;
+    }
+  }
+}
+
 async function patch(){
   if(state.working)return;
   if(!state.file){toast(t('noVideo'));return}
@@ -828,9 +925,9 @@ async function patch(){
     $('patchButton').classList.add('is-working');
     log('info','started',state.file.name);
     toast(t('started'));
-    const r=await window.alterE.video.patch({});
+    const r=await runPatchWithHevcFallback();
     toast(t('completed'),t('processedSaved'));
-    log('success','saved',r.outputPath);
+    log('success','saved',r?.outputPath || '');
   }catch(e){
     const raw=String(e?.message||e);
     const m=/not supported for patching|format is not supported|invalid mp4|moov|mdat|ftyp|container/i.test(raw)?t('unsupportedPatchFormat'):raw;
