@@ -1,5 +1,5 @@
 const REMOVE_NAL_TYPES = new Set([6, 9]); // SEI, AUD
-const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'edts', 'udta', 'meta', 'ilst', 'dinf', 'avc1', 'mp4a']);
+const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'stsd', 'edts', 'udta', 'meta', 'ilst', 'dinf', 'avc1', 'mp4a']);
 
 function be32(buf, o) { return new DataView(buf.buffer, buf.byteOffset + o, 4).getUint32(0, false); }
 function wr32(buf, o, v) { new DataView(buf.buffer, buf.byteOffset + o, 4).setUint32(0, v >>> 0, false); }
@@ -31,6 +31,7 @@ function parseBoxes(data, start = 0, end = data.length) {
     const box = { type, start: p, header, end: p + size, children: [] };
     let childStart = p + header;
     if (type === 'meta') childStart += 4;
+    else if (type === 'stsd') childStart = p + header + 8;
     else if (type === 'avc1' || type === 'mp4a') childStart = p + header + (type === 'avc1' ? 78 : 28);
     if (CONTAINERS.has(type) && childStart < p + size) box.children = parseBoxes(data, childStart, p + size);
     out.push(box);
