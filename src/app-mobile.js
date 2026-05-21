@@ -834,6 +834,7 @@ function base64ToBytes(base64){
 
 async function transcodeSelectedVideoToH264(file){
   const bridge=window.AlterTranscode;
+  window.alterMobile.clearSelectedFile?.();
   if(!bridge || typeof bridge.beginTranscode!=='function'){
     throw new Error('HEVC fallback is not available in this APK.');
   }
@@ -913,15 +914,24 @@ async function runPatchWithHevcFallback(){
 
     // Replace the selected file everywhere before calling the V5 patcher again.
     // The V5 patcher reads the currently selected file from alterMobile, so this must happen first.
-    state.file=h264File;
-    state.fileUrl=window.alterMobile.setSelectedFile(h264File);
+    state.file = h264File;
+
+    // Fully reset the native/mobile selected-file handle before selecting the transcoded H.264 file.
+    // Android WebView/bridge can otherwise keep the original HEVC handle cached.
+    window.alterMobile.clearSelectedFile?.();
+    await new Promise(r => setTimeout(r, 120));
+
+    state.fileUrl = window.alterMobile.setSelectedFile(h264File);
+    await new Promise(r => setTimeout(r, 180));
+
     renderVideo();
     saveUiSnapshot();
     log('info','loaded',h264File.name);
     $('patchProgress')?.style.setProperty('--progress','78%');
 
     // Second try only. If it still says not H.264, stop and show the real error.
-    return await window.alterE.video.patch({});
+    const result = await window.alterE.video.patch({});
+    return result;
   }
 }
 
