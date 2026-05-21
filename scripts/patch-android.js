@@ -1532,12 +1532,17 @@ public class TranscodeBridge {
 
                 "-vf", "scale='min(1080,iw)':-2",
 
-                "-c:v", "h264_mediacodec",
+                "-c:v", "h264",
+                "-profile:v", "high",
+                "-level", "4.1",
+                "-pix_fmt", "yuv420p",
+
                 "-b:v", "8000k",
                 "-maxrate", "10000k",
                 "-bufsize", "16000k",
 
-                "-pix_fmt", "yuv420p",
+                "-g", "30",
+                "-r", "30",
 
                 "-c:a", "aac",
                 "-b:a", "160k",
