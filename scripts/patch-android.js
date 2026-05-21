@@ -1348,32 +1348,48 @@ console.log('Android cleartext/network config patched.');
     const libsDir = path.join('android', 'app', 'libs');
     const aarName = 'ffmpeg-kit-full.aar';
     const aarPath = path.join(libsDir, aarName);
-    const sourceAarPath = path.join('libs', 'ffmpeg-kit-full.aar');
+
+    function firstExisting(paths) {
+      for (const p of paths) if (fs.existsSync(p) && fs.statSync(p).size > 1024 * 1024) return p;
+      return '';
+    }
+
+    const sourceAarPath = firstExisting([
+      path.join('libs', 'ffmpeg-kit-full.aar'),
+      path.join('libs', 'ffmpeg-kit-full-gpl-6.0-2.LTS.aar'),
+      path.join('android', 'libs', 'ffmpeg-kit-full.aar'),
+      path.join('android', 'app', 'libs', 'ffmpeg-kit-full.aar')
+    ]);
 
     fs.mkdirSync(libsDir, { recursive: true });
-    if (!fs.existsSync(sourceAarPath)) {
-      throw new Error(`Local AAR not found: ${sourceAarPath}`);
+
+    if (!sourceAarPath) {
+      throw new Error('Local FFmpegKit AAR not found. Put it at libs/ffmpeg-kit-full.aar');
     }
+
     fs.copyFileSync(sourceAarPath, aarPath);
-    console.log('[OK] Local ffmpeg-kit AAR copied:', aarPath);
+    console.log('[OK] Local ffmpeg-kit AAR copied:', sourceAarPath, '->', aarPath);
 
     if (fs.existsSync(gradlePath)) {
       let gradle = fs.readFileSync(gradlePath, 'utf8');
+
+      // Remove all old/failed FFmpegKit dependency variants.
       gradle = gradle.replace(/\s*implementation\s+["']com\.arthenica:ffmpeg-kit-[^"']+["']\s*/g, '\n');
       gradle = gradle.replace(/\s*implementation\s+files\(["']libs\/ffmpeg-kit-[^"']+\.aar["']\)\s*/g, '\n');
-      if (!/ffmpeg-kit-full\.aar/.test(gradle)) {
+
+      // Ensure local AAR is packed into APK.
+      if (!/implementation\s+files\(["']libs\/ffmpeg-kit-full\.aar["']\)/.test(gradle)) {
         gradle = gradle.replace(/dependencies\s*\{/, `dependencies {\n    implementation files('libs/ffmpeg-kit-full.aar')`);
       }
-      fs.writeFileSync(gradlePath, gradle, 'utf8');
-    }
 
-    const settingsPath = path.join('android', 'settings.gradle');
-    if (fs.existsSync(settingsPath)) {
-      let settings = fs.readFileSync(settingsPath, 'utf8');
-      if (!/mavenCentral\(\)/.test(settings)) {
-        settings = settings.replace(/repositories\s*\{/, 'repositories {\n        mavenCentral()');
+      // Keep a local flatDir repository too. implementation files(...) is enough,
+      // but this makes Gradle resolution stable across generated Capacitor templates.
+      if (!/flatDir\s*\{[\s\S]*?dirs\s+['"]libs['"]/.test(gradle)) {
+        gradle = gradle.replace(/android\s*\{/, `repositories {\n    flatDir { dirs 'libs' }\n}\n\nandroid {`);
       }
-      fs.writeFileSync(settingsPath, settings, 'utf8');
+
+      fs.writeFileSync(gradlePath, gradle, 'utf8');
+      console.log('[OK] Gradle local AAR dependency patched.');
     }
 
     function walk(dir, found = []) {
@@ -1385,15 +1401,64 @@ console.log('Android cleartext/network config patched.');
       }
       return found;
     }
+
     const javaRoot = path.join('android', 'app', 'src', 'main', 'java');
     const mainActivityPath = walk(javaRoot).find(p => /MainActivity\.java$/.test(p));
-    if (!mainActivityPath) return;
+    if (!mainActivityPath) {
+      throw new Error('MainActivity.java not found after Capacitor Android generation');
+    }
+
+    // Some mirror AARs miss this tiny runtime dependency, while FFmpegKit calls it.
+    // Add a compatible local implementation so FFmpegKit can load at runtime.
+    const smartExceptionDir = path.join(javaRoot, 'com', 'arthenica', 'smartexception', 'java');
+    fs.mkdirSync(smartExceptionDir, { recursive: true });
+    fs.writeFileSync(path.join(smartExceptionDir, 'Exceptions.java'), `package com.arthenica.smartexception.java;
+
+import android.util.Log;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.HashSet;
+import java.util.Set;
+
+public class Exceptions {
+    private static final Set<String> ROOT_PACKAGES = new HashSet<>();
+
+    public static void registerRootPackage(String rootPackage) {
+        try {
+            if (rootPackage != null && rootPackage.length() > 0) ROOT_PACKAGES.add(rootPackage);
+        } catch (Throwable ignored) {}
+    }
+
+    public static String getStackTraceString(Throwable throwable) {
+        if (throwable == null) return "";
+        try {
+            return Log.getStackTraceString(throwable);
+        } catch (Throwable ignored) {
+            try {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                throwable.printStackTrace(pw);
+                pw.flush();
+                return sw.toString();
+            } catch (Throwable ignored2) {
+                return String.valueOf(throwable);
+            }
+        }
+    }
+}
+`, 'utf8');
+    console.log('[OK] SmartException compatibility class added.');
+
     let main = fs.readFileSync(mainActivityPath, 'utf8');
     const pkgMatch = main.match(/package\s+([\w.]+);/);
     const packageName = pkgMatch ? pkgMatch[1] : 'com.alterediting.method';
     const packageDir = mainActivityPath.slice(0, mainActivityPath.lastIndexOf(path.sep));
+
     if (!main.includes('AlterTranscode')) {
-      main = main.replace('getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");', 'getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");\n        getBridge().getWebView().addJavascriptInterface(new TranscodeBridge(this), "AlterTranscode");');
+      main = main.replace(
+        'getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");',
+        'getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");\n        getBridge().getWebView().addJavascriptInterface(new TranscodeBridge(this), "AlterTranscode");'
+      );
       fs.writeFileSync(mainActivityPath, main, 'utf8');
     }
 
@@ -1404,7 +1469,6 @@ import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import com.arthenica.ffmpegkit.FFmpegKit;
 import com.arthenica.ffmpegkit.ReturnCode;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -1447,8 +1511,8 @@ public class TranscodeBridge {
             FileOutputStream stream = new FileOutputStream(input);
             sessions.put(token, new Session(input, output, stream));
             return token;
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
+        } catch (Throwable e) {
+            return "ERROR:JAVA:" + e.getClass().getName() + ":" + String.valueOf(e.getMessage());
         }
     }
 
@@ -1460,8 +1524,8 @@ public class TranscodeBridge {
             byte[] bytes = Base64.decode(base64Chunk, Base64.DEFAULT);
             s.inputStream.write(bytes);
             return "OK";
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
+        } catch (Throwable e) {
+            return "ERROR:JAVA:" + e.getClass().getName() + ":" + String.valueOf(e.getMessage());
         }
     }
 
@@ -1473,8 +1537,8 @@ public class TranscodeBridge {
             s.inputStream.flush();
             s.inputStream.close();
 
-            // Use executeWithArguments, not one big quoted command string.
-            // This avoids Android/FFmpegKit parser crashes on paths with spaces or Cyrillic symbols.
+            // TEMP ONLY: HEVC/H.265 -> H.264/AVC, then JS V5 patcher runs on this file
+            // and saves only the final patched result.
             String[] args = new String[] {
                 "-y",
                 "-hide_banner",
@@ -1482,13 +1546,16 @@ public class TranscodeBridge {
                 "-i", s.input.getAbsolutePath(),
                 "-map", "0:v:0",
                 "-map", "0:a?",
-                "-c:v", "libx264",
-                "-preset", "veryfast",
-                "-crf", "18",
-                "-profile:v", "high",
+                "-vf", "scale='min(1080,iw)':-2",
+                "-c:v", "h264_mediacodec",
                 "-pix_fmt", "yuv420p",
+                "-b:v", "8000k",
+                "-maxrate", "10000k",
+                "-bufsize", "16000k",
+                "-g", "30",
+                "-r", "30",
                 "-c:a", "aac",
-                "-b:a", "192k",
+                "-b:a", "160k",
                 "-movflags", "+faststart",
                 s.output.getAbsolutePath()
             };
@@ -1504,13 +1571,9 @@ public class TranscodeBridge {
             if (!s.output.exists() || s.output.length() <= 0) return "ERROR:empty_transcode_output";
             return "OK";
         } catch (Throwable e) {
-            String cls = e.getClass() == null ? "Throwable" : e.getClass().getName();
-            String msg = e.getMessage() == null ? "" : e.getMessage();
-            return "ERROR:JAVA:" + cls + ":" + msg;
+            return "ERROR:JAVA:" + e.getClass().getName() + ":" + String.valueOf(e.getMessage());
         }
     }
-
-    private String q(String v) { return "'" + v.replace("'", "'\\''") + "'"; }
 
     @JavascriptInterface
     public synchronized long getResultSize(String token) {
@@ -1539,8 +1602,8 @@ public class TranscodeBridge {
                 buf = exact;
             }
             return Base64.encodeToString(buf, Base64.NO_WRAP);
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
+        } catch (Throwable e) {
+            return "ERROR:JAVA:" + e.getClass().getName() + ":" + String.valueOf(e.getMessage());
         }
     }
 
@@ -1548,9 +1611,9 @@ public class TranscodeBridge {
     public synchronized String releaseResult(String token) {
         Session s = sessions.remove(token);
         if (s == null) return "OK";
-        try { if (s.inputStream != null) s.inputStream.close(); } catch (Exception ignored) {}
-        try { if (s.input != null) s.input.delete(); } catch (Exception ignored) {}
-        try { if (s.output != null) s.output.delete(); } catch (Exception ignored) {}
+        try { if (s.inputStream != null) s.inputStream.close(); } catch (Throwable ignored) {}
+        try { if (s.input != null) s.input.delete(); } catch (Throwable ignored) {}
+        try { if (s.output != null) s.output.delete(); } catch (Throwable ignored) {}
         return "OK";
     }
 }
@@ -1558,5 +1621,6 @@ public class TranscodeBridge {
     console.log('[OK] V5 HEVC fallback TranscodeBridge added.');
   } catch (e) {
     console.warn('[WARN] V5 HEVC fallback patch skipped:', e && e.message ? e.message : e);
+    process.exitCode = 1;
   }
 })();
