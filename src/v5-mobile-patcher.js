@@ -1,5 +1,5 @@
 const REMOVE_NAL_TYPES = new Set([6, 9]); // SEI, AUD
-const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'edts', 'udta', 'meta', 'ilst', 'dinf', 'avc1', 'mp4a']);
+const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'stsd', 'edts', 'udta', 'meta', 'ilst', 'dinf', 'avc1', 'avc3', 'mp4a']);
 
 function be32(buf, o) { return new DataView(buf.buffer, buf.byteOffset + o, 4).getUint32(0, false); }
 function wr32(buf, o, v) { new DataView(buf.buffer, buf.byteOffset + o, 4).setUint32(0, v >>> 0, false); }
@@ -31,7 +31,8 @@ function parseBoxes(data, start = 0, end = data.length) {
     const box = { type, start: p, header, end: p + size, children: [] };
     let childStart = p + header;
     if (type === 'meta') childStart += 4;
-    else if (type === 'avc1' || type === 'mp4a') childStart = p + header + (type === 'avc1' ? 78 : 28);
+    else if (type === 'stsd') childStart = p + header + 8;
+    else if (type === 'avc1' || type === 'avc3' || type === 'mp4a') childStart = p + header + (type === 'mp4a' ? 28 : 78);
     if (CONTAINERS.has(type) && childStart < p + size) box.children = parseBoxes(data, childStart, p + size);
     out.push(box);
     p += size;
@@ -141,24 +142,60 @@ function shiftBefore(events, offset) {
   for (const [pos, delta] of events) { if (pos <= offset) s += delta; else break; }
   return s;
 }
+function hasH264SampleEntry(videoTrak, data) {
+  const stsd = findPath(videoTrak, ['mdia', 'minf', 'stbl', 'stsd'])[0];
+  if (!stsd) return false;
 
-function patchFtypToIsom(data) {
-  const ftyp = parseBoxes(data).find(b => b.type === 'ftyp');
+  // Some Android/MediaCodec/FFmpegKit outputs have an stsd layout that is valid,
+  // but too vendor-specific for the small box parser above to expose avc1 as a child.
+  // V5 needs AVC/H.264, so accept either a parsed avc1/avc3 child OR the raw sample
+  // entry marker inside the video track's stsd box. This fixes false HEVC errors after
+  // HEVC -> H.264 fallback renders.
+  if (stsd.children?.some(b => b.type === 'avc1' || b.type === 'avc3')) return true;
+
+  const start = stsd.start + stsd.header;
+  const end = Math.min(stsd.end, data.length);
+  const avc1 = indexOfBytes(data, bytesOfAscii('avc1'), start);
+  const avc3 = indexOfBytes(data, bytesOfAscii('avc3'), start);
+  return (avc1 >= start && avc1 < end) || (avc3 >= start && avc3 < end);
+}
+
+function patchFtypBrand(data) {
+  const boxes = parseBoxes(data);
+  const ftyp = boxes.find(b => b.type === 'ftyp');
   if (!ftyp || ftyp.end - ftyp.start < 16) return;
-  const majorPos = ftyp.start + 8;
-  data.set(bytesOfAscii('isom'), majorPos);
-  // Keep minor_version as-is, but normalize compatible brands where there is room.
-  // This mirrors the desktop V5 remux target closer than leaving Samsung/MediaCodec mp42.
+
+  // Match the desktop V5 normalization: major_brand isom. Keep box size unchanged.
+  data.set(bytesOfAscii('isom'), ftyp.start + 8);
+
+  // If there is room for compatible brands, normalize the common four entries too.
   const brands = ['isom', 'iso2', 'avc1', 'mp41'];
-  let p = ftyp.start + 16;
+  let pos = ftyp.start + 16;
   for (const brand of brands) {
-    if (p + 4 > ftyp.end) break;
-    data.set(bytesOfAscii(brand), p);
-    p += 4;
+    if (pos + 4 > ftyp.end) break;
+    data.set(bytesOfAscii(brand), pos);
+    pos += 4;
   }
 }
-function hasH264SampleEntry(videoTrak) {
-  return findPath(videoTrak, ['mdia', 'minf', 'stbl', 'stsd'])[0]?.children?.some(b => b.type === 'avc1') || false;
+
+export async function isV5H264CompatibleFile(file) {
+  if (!file) return false;
+  try {
+    const buffer = await file.arrayBuffer();
+    const data = new Uint8Array(buffer);
+    const boxes = parseBoxes(data);
+    const moov = boxes.find(b => b.type === 'moov');
+    if (!moov) return false;
+    for (const t of moov.children.filter(x => x.type === 'trak')) {
+      const h = findPath(t, ['mdia', 'hdlr'])[0];
+      if (!h) continue;
+      const handler = ascii(data, h.start + h.header + 8, h.start + h.header + 12);
+      if (handler === 'vide') return hasH264SampleEntry(t);
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
 }
 
 export async function runV5MobilePatcher(file, { onProgress } = {}) {
@@ -179,7 +216,7 @@ export async function runV5MobilePatcher(file, { onProgress } = {}) {
     if (handler === 'vide') { videoTrak = t; break; }
   }
   if (!videoTrak) throw new Error('video track was not found');
-  if (!hasH264SampleEntry(videoTrak)) throw new Error('V5 supports only H.264/AVC.');
+  if (!hasH264SampleEntry(videoTrak, mut)) throw new Error('V5 supports only H.264/AVC.');
 
   const stszBox = findPath(videoTrak, ['mdia', 'minf', 'stbl', 'stsz'])[0];
   const stscBox = findPath(videoTrak, ['mdia', 'minf', 'stbl', 'stsc'])[0];
@@ -244,8 +281,8 @@ export async function runV5MobilePatcher(file, { onProgress } = {}) {
     if (mdat.header === 8) wr32(packed, mdat.start, newMdatSize);
     else wr64(packed, mdat.start + 8, newMdatSize);
   }
-  patchFtypToIsom(packed);
+  patchFtypBrand(packed);
   patchTkhdMatrix(packed);
   onProgress?.(95);
-  return new Blob([packed], { type: 'video/mp4' });
+  return new Blob([packed], { type: file.type || 'video/mp4' });
 }

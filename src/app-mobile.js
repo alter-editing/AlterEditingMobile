@@ -885,12 +885,11 @@ function isV5H264OnlyError(error){
 }
 
 async function runPatchWithHevcFallback(){
-  // Single source of truth: window.alterE.video.patch() already does:
-  // HEVC/H.265 -> temporary H.264 -> V5 binary patch -> save FINAL patched output.
-  // Do not run a second UI-level fallback here, otherwise the app may save/render
-  // the intermediate _h264 file or re-enter _h264_h264 loops.
+  // Codec fallback is handled inside mobile-bridge.js exactly once.
+  // Keeping fallback here caused repeated _h264_h264 renders and stale-file patching.
   return await window.alterE.video.patch({});
 }
+
 
 async function patch(){
   if(state.working)return;

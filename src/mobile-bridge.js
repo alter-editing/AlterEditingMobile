@@ -3,7 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
 import { APP_VERSION, UPDATE_REPO } from './app-version.js';
-import { runV5MobilePatcher } from './v5-mobile-patcher.js';
+import { runV5MobilePatcher, isV5H264CompatibleFile } from './v5-mobile-patcher.js';
 
 const DEFAULT_AUTH_API_BASE = 'http://132.243.30.159:3000';
 const DEFAULT_AUTH_API_FALLBACKS = ['http://83.147.241.28:3000'];
@@ -325,18 +325,36 @@ async function nativeTranscodeToH264(file) {
   }
 }
 
+// FINAL V5 chain: selected file -> optional HEVC/H.265 temp transcode -> V5 binary patch -> save only final patched Blob.
 async function patchFileToBlob(file) {
   if (!file) throw new Error('No selected video.');
   const ext = extOf(file.name);
   if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
   emitProgress(5);
+
+  // One authority for codec fallback: this bridge. The UI must not re-transcode.
+  // First try the selected file. If it is AVC/H.264, V5 runs immediately.
   try {
     return await runV5MobilePatcher(file, { onProgress: emitProgress });
   } catch (error) {
     const raw = String(error?.message || error || '');
-    if (!/H\.264|AVC|h264/i.test(raw)) throw error;
+    const needsH264 = /V5 supports only H\.264\/AVC|supports only H\.264|HEVC|H\.265|h265|hevc/i.test(raw);
+    if (!needsH264) throw error;
+
+    // Do not loop forever on files already produced by this fallback.
+    if (/_h264(?:_h264)*\.(mp4|mov)$/i.test(file.name || '')) {
+      throw error;
+    }
+
     const h264File = await nativeTranscodeToH264(file);
     emitProgress(56);
+
+    // Verify the MP4 sample entry before running V5. This catches bad Android encoder output cleanly.
+    const compatible = await isV5H264CompatibleFile(h264File);
+    if (!compatible) {
+      throw new Error('HEVC fallback produced a file that is still not AVC/H.264 for V5. Use a different ffmpeg-kit build or render the video in H.264 before patching.');
+    }
+
     return runV5MobilePatcher(h264File, { onProgress: (p) => emitProgress(56 + Math.round((Number(p) || 0) * 0.44)) });
   }
 }
