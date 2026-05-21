@@ -3,14 +3,13 @@ import { Preferences } from '@capacitor/preferences';
 import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
 import { APP_VERSION, UPDATE_REPO } from './app-version.js';
+import { runV5MobilePatcher } from './v5-mobile-patcher.js';
 
 const DEFAULT_AUTH_API_BASE = 'http://132.243.30.159:3000';
 const DEFAULT_AUTH_API_FALLBACKS = ['http://83.147.241.28:3000'];
 const DEFAULT_TELEGRAM_CHANNEL_URL = 'https://t.me/alterediting';
 const DEFAULT_TELEGRAM_BOT_URL = 'https://t.me/AlterEditing_bot';
 
-const PATCH_BYTES = new Uint8Array([0x10, 0x00, 0x00, 0x01]);
-const ELST_SIGNATURE = [0x65, 0x6c, 0x73, 0x74, 0x00, 0x00, 0x00, 0x00];
 const SUPPORTED_EXTENSIONS = ['.mp4', '.mov'];
 
 let runtimeConfig = null;
@@ -281,34 +280,14 @@ async function getAuthStatus(token) {
   throw lastError || new Error('auth_status_failed');
 }
 
-function findElstPatchOffset(bytes) {
-  const max = bytes.length - 12;
-  for (let i = 0; i <= max; i++) {
-    let ok = true;
-    for (let j = 0; j < ELST_SIGNATURE.length; j++) {
-      if (bytes[i + j] !== ELST_SIGNATURE[j]) { ok = false; break; }
-    }
-    if (ok) return i + 8;
-  }
-  return -1;
-}
-
 async function patchFileToBlob(file) {
   if (!file) throw new Error('No selected video.');
   const ext = extOf(file.name);
   if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
   emitProgress(5);
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  emitProgress(40);
-  const offset = findElstPatchOffset(bytes);
-  if (offset < 0) throw new Error('This video format is not supported for patching.');
-  const already = PATCH_BYTES.every((b, i) => bytes[offset + i] === b);
-  if (already) throw new Error('This video is already patched.');
-  bytes.set(PATCH_BYTES, offset);
-  emitProgress(85);
-  return new Blob([bytes], { type: file.type || 'video/mp4' });
+  return runV5MobilePatcher(file, { onProgress: emitProgress });
 }
+
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -365,69 +344,12 @@ function findSignatureInBytes(bytes, signature) {
   return -1;
 }
 
-async function patchFileToGalleryStreaming(file, filename) {
-  if (!hasNativeChunkedGalleryBridge()) return null;
-  if (!file) throw new Error('No selected video.');
-  const ext = extOf(file.name);
-  if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
-
-  const nativeBridge = window.AlterGallery;
-  const mimeType = file.type || (ext === '.mov' ? 'video/quicktime' : 'video/mp4');
-  const token = String(nativeBridge.beginSaveVideo(filename, mimeType) || '');
-  if (!token || token.startsWith('ERROR:')) {
-    throw new Error(token.replace(/^ERROR:/, '') || 'gallery_begin_failed');
-  }
-
-  const chunkSize = ((navigator.deviceMemory && navigator.deviceMemory <= 3) ? 512 : 768) * 1024; // smaller chunks reduce memory spikes on old Android WebViews.
-  const overlap = ELST_SIGNATURE.length + PATCH_BYTES.length - 1;
-  let pending = new Uint8Array(0);
-  let patched = false;
-
-  const appendBytes = bytes => {
-    if (!bytes || !bytes.byteLength) return;
-    const base64 = arrayBufferToBase64(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-    const result = String(nativeBridge.appendSaveVideoChunk(token, base64) || '');
-    if (result !== 'OK') throw new Error(result.replace(/^ERROR:/, '') || 'gallery_chunk_failed');
-  };
-
-  try {
-    for (let start = 0; start < file.size; start += chunkSize) {
-      const end = Math.min(file.size, start + chunkSize);
-      const originalChunk = new Uint8Array(await file.slice(start, end).arrayBuffer());
-      const scan = new Uint8Array(pending.length + originalChunk.length);
-      scan.set(pending, 0);
-      scan.set(originalChunk, pending.length);
-
-      if (!patched) {
-        const sigIndex = findSignatureInBytes(scan, ELST_SIGNATURE);
-        if (sigIndex >= 0) {
-          const patchStartInScan = sigIndex + ELST_SIGNATURE.length;
-          const patchEndInScan = patchStartInScan + PATCH_BYTES.length;
-          const current = scan.subarray(patchStartInScan, patchEndInScan);
-          const alreadyPatched = current.length === PATCH_BYTES.length && PATCH_BYTES.every((b, i) => current[i] === b);
-          if (alreadyPatched) throw new Error('This video is already patched.');
-          scan.set(PATCH_BYTES, patchStartInScan);
-          patched = true;
-        }
-      }
-
-      const writeLength = Math.max(0, scan.length - overlap);
-      appendBytes(scan.subarray(0, writeLength));
-      pending = scan.slice(writeLength);
-      emitProgress(Math.min(95, 8 + Math.round((end / file.size) * 84)));
-    }
-
-    if (!patched) throw new Error('This video format is not supported for patching.');
-    appendBytes(pending);
-    pending = new Uint8Array(0);
-    const result = String(nativeBridge.finishSaveVideo(token) || '');
-    if (result && !result.startsWith('ERROR:')) return result;
-    throw new Error(result.replace(/^ERROR:/, '') || 'gallery_finish_failed');
-  } catch (error) {
-    try { nativeBridge.abortSaveVideo?.(token); } catch (_) {}
-    throw error;
-  }
+async function patchFileToGalleryStreaming() {
+  // V5 changes sample sizes and chunk offsets, so the old in-place ELST streaming patch is intentionally disabled.
+  // The patched Blob is produced first, then saved through the existing chunked Gallery bridge.
+  return null;
 }
+
 
 async function saveVideoToGallery(blob, filename) {
   const nativeBridge = window.AlterGallery;
@@ -633,26 +555,7 @@ window.alterE = {
   video: {
     getPathForFile: file => { window.alterMobile.setSelectedFile(file); return '__mobile_selected_file__'; },
     isSupported: async () => Boolean(selectedFile && SUPPORTED_EXTENSIONS.includes(extOf(selectedFile.name))),
-    isAlreadyPatched: async () => {
-      if (!selectedFile) return false;
-      const chunkSize = 512 * 1024;
-      const overlap = ELST_SIGNATURE.length + PATCH_BYTES.length - 1;
-      let pending = new Uint8Array(0);
-      for (let start = 0; start < selectedFile.size; start += chunkSize) {
-        const end = Math.min(selectedFile.size, start + chunkSize);
-        const part = new Uint8Array(await selectedFile.slice(start, end).arrayBuffer());
-        const scan = new Uint8Array(pending.length + part.length);
-        scan.set(pending, 0);
-        scan.set(part, pending.length);
-        const sigIndex = findSignatureInBytes(scan, ELST_SIGNATURE);
-        if (sigIndex >= 0) {
-          const patchStart = sigIndex + ELST_SIGNATURE.length;
-          return PATCH_BYTES.every((b, i) => scan[patchStart + i] === b);
-        }
-        pending = scan.slice(Math.max(0, scan.length - overlap));
-      }
-      return false;
-    },
+    isAlreadyPatched: async () => false,
     probe: async () => {
       if (!selectedFile) throw new Error('No selected video.');
       return { path: '__mobile_selected_file__', name: selectedFile.name, extension: extOf(selectedFile.name), sizeBytes: selectedFile.size, durationSeconds: 0, width: 0, height: 0, fps: 0, codec: '', hasAudio: false, videoBitrateKbps: 0, audioBitrateKbps: 0, objectUrl: selectedFileUrl };
