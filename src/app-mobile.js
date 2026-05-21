@@ -884,47 +884,48 @@ function isV5H264OnlyError(error){
   return /V5 supports only H\.264\/AVC|supports only H\.264|H\.265|HEVC|h265|hevc/i.test(raw);
 }
 
+function isAlreadyTranscodedH264File(file){
+  const name=String(file?.name || '');
+  return Boolean(file?.__alterETranscoded || /_h264(?:_|\.|$)/i.test(name));
+}
+
 async function runPatchWithHevcFallback(){
   try{
     return await window.alterE.video.patch({});
   }catch(e){
     if(!isV5H264OnlyError(e)) throw e;
 
+    // Critical guard: do NOT transcode a file that was already produced by this fallback.
+    // Without this guard the app can create *_h264_h264_h264.mp4 and still patch the wrong input.
+    if(isAlreadyTranscodedH264File(state.file)){
+      throw e;
+    }
+
     log('info','started','HEVC/H.265 detected. Transcoding to H.264.');
     toast('HEVC/H.265', 'Конвертация в H.264...');
 
     const originalFile=state.file;
-
-    // 1. Рендерим HEVC/H.265 в H.264 через Android TranscodeBridge
     const h264File=await transcodeSelectedVideoToH264(originalFile);
+    try{ h264File.__alterETranscoded=true; }catch(_){ }
 
-    // 2. Проверяем, что новый файл реально MP4/MOV контейнер
     const validContainer = await hasValidMp4MovStructure(h264File).catch(()=>false);
-    if(!validContainer){
-      throw new Error(t('unsupportedPatchFormat'));
-    }
+    if(!validContainer) throw new Error(t('unsupportedPatchFormat'));
 
-    // 3. Обязательно меняем текущий файл приложения на уже готовый H.264
-    state.file = h264File;
-
-    // 4. Обязательно обновляем selected file в alterMobile, иначе V5 снова возьмёт старый HEVC
-    state.fileUrl = window.alterMobile.setSelectedFile(h264File);
-
-    // 5. Обновляем превью и логи
+    // Replace the selected file everywhere before calling the V5 patcher again.
+    // The V5 patcher reads the currently selected file from alterMobile, so this must happen first.
+    state.file=h264File;
+    state.fileUrl=window.alterMobile.setSelectedFile(h264File);
     renderVideo();
+    saveUiSnapshot();
     log('info','loaded',h264File.name);
+    $('patchProgress')?.style.setProperty('--progress','78%');
 
-    // 6. Даём WebView/native bridge время обновить выбранный файл
-    await new Promise(r => setTimeout(r, 400));
-
-    // 7. Теперь V5 патчит уже H.264 файл
-    $('patchProgress')?.style.setProperty('--progress','82%');
-
+    // Second try only. If it still says not H.264, stop and show the real error.
     return await window.alterE.video.patch({});
   }
 }
 
-async function patch(){
+async function patch()async function patch(){
   if(state.working)return;
   if(!state.file){toast(t('noVideo'));return}
   if(isVideoTooLarge(state.file)){showTooLargeToast();log('error','videoTooLarge',state.file.name);return}
