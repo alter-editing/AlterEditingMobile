@@ -1388,51 +1388,6 @@ console.log('Android cleartext/network config patched.');
     const javaRoot = path.join('android', 'app', 'src', 'main', 'java');
     const mainActivityPath = walk(javaRoot).find(p => /MainActivity\.java$/.test(p));
     if (!mainActivityPath) return;
-
-    // ffmpeg-kit AAR from mirrors often misses its tiny Java dependency:
-    // com.arthenica.smartexception.java.Exceptions.
-    // Add a compatible local stub so FFmpegKit can load at runtime.
-    const smartExceptionDir = path.join(javaRoot, 'com', 'arthenica', 'smartexception', 'java');
-    fs.mkdirSync(smartExceptionDir, { recursive: true });
-    fs.writeFileSync(path.join(smartExceptionDir, 'Exceptions.java'), `package com.arthenica.smartexception.java;
-
-import android.util.Log;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.HashSet;
-import java.util.Set;
-
-public class Exceptions {
-    private static final Set<String> ROOT_PACKAGES = new HashSet<>();
-
-    public static void registerRootPackage(String rootPackage) {
-        try {
-            if (rootPackage != null && rootPackage.length() > 0) {
-                ROOT_PACKAGES.add(rootPackage);
-            }
-        } catch (Throwable ignored) {}
-    }
-
-    public static String getStackTraceString(Throwable throwable) {
-        if (throwable == null) return "";
-        try {
-            return Log.getStackTraceString(throwable);
-        } catch (Throwable ignored) {
-            try {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                throwable.printStackTrace(pw);
-                pw.flush();
-                return sw.toString();
-            } catch (Throwable ignored2) {
-                return String.valueOf(throwable);
-            }
-        }
-    }
-}
-`, 'utf8');
-    console.log('[OK] SmartException compatibility class added.');
-
     let main = fs.readFileSync(mainActivityPath, 'utf8');
     const pkgMatch = main.match(/package\s+([\w.]+);/);
     const packageName = pkgMatch ? pkgMatch[1] : 'com.alterediting.method';
@@ -1524,26 +1479,17 @@ public class TranscodeBridge {
                 "-y",
                 "-hide_banner",
                 "-loglevel", "error",
-
                 "-i", s.input.getAbsolutePath(),
-
                 "-map", "0:v:0",
                 "-map", "0:a?",
-
-                "-vf", "scale='min(1080,iw)':-2",
-
-                "-c:v", "h264",
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-crf", "18",
+                "-profile:v", "high",
                 "-pix_fmt", "yuv420p",
-
-                "-b:v", "6000k",
-                "-r", "30",
-                "-g", "30",
-
                 "-c:a", "aac",
-                "-b:a", "128k",
-
+                "-b:a", "192k",
                 "-movflags", "+faststart",
-
                 s.output.getAbsolutePath()
             };
 

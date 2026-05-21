@@ -834,7 +834,6 @@ function base64ToBytes(base64){
 
 async function transcodeSelectedVideoToH264(file){
   const bridge=window.AlterTranscode;
-  window.alterMobile.clearSelectedFile?.();
   if(!bridge || typeof bridge.beginTranscode!=='function'){
     throw new Error('HEVC fallback is not available in this APK.');
   }
@@ -885,54 +884,12 @@ function isV5H264OnlyError(error){
   return /V5 supports only H\.264\/AVC|supports only H\.264|H\.265|HEVC|h265|hevc/i.test(raw);
 }
 
-function isAlreadyTranscodedH264File(file){
-  const name=String(file?.name || '');
-  return Boolean(file?.__alterETranscoded || /_h264(?:_|\.|$)/i.test(name));
-}
-
 async function runPatchWithHevcFallback(){
-  try{
-    return await window.alterE.video.patch({});
-  }catch(e){
-    if(!isV5H264OnlyError(e)) throw e;
-
-    // Critical guard: do NOT transcode a file that was already produced by this fallback.
-    // Without this guard the app can create *_h264_h264_h264.mp4 and still patch the wrong input.
-    if(isAlreadyTranscodedH264File(state.file)){
-      throw e;
-    }
-
-    log('info','started','HEVC/H.265 detected. Transcoding to H.264.');
-    toast('HEVC/H.265', 'Конвертация в H.264...');
-
-    const originalFile=state.file;
-    const h264File=await transcodeSelectedVideoToH264(originalFile);
-    try{ h264File.__alterETranscoded=true; }catch(_){ }
-
-    const validContainer = await hasValidMp4MovStructure(h264File).catch(()=>false);
-    if(!validContainer) throw new Error(t('unsupportedPatchFormat'));
-
-    // Replace the selected file everywhere before calling the V5 patcher again.
-    // The V5 patcher reads the currently selected file from alterMobile, so this must happen first.
-    state.file = h264File;
-
-    // Fully reset the native/mobile selected-file handle before selecting the transcoded H.264 file.
-    // Android WebView/bridge can otherwise keep the original HEVC handle cached.
-    window.alterMobile.clearSelectedFile?.();
-    await new Promise(r => setTimeout(r, 120));
-
-    state.fileUrl = window.alterMobile.setSelectedFile(h264File);
-    await new Promise(r => setTimeout(r, 180));
-
-    renderVideo();
-    saveUiSnapshot();
-    log('info','loaded',h264File.name);
-    $('patchProgress')?.style.setProperty('--progress','78%');
-
-    // Second try only. If it still says not H.264, stop and show the real error.
-    const result = await window.alterE.video.patch({});
-    return result;
-  }
+  // Single source of truth: window.alterE.video.patch() already does:
+  // HEVC/H.265 -> temporary H.264 -> V5 binary patch -> save FINAL patched output.
+  // Do not run a second UI-level fallback here, otherwise the app may save/render
+  // the intermediate _h264 file or re-enter _h264_h264 loops.
+  return await window.alterE.video.patch({});
 }
 
 async function patch(){

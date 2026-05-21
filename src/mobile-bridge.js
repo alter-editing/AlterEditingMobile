@@ -454,6 +454,12 @@ async function saveVideoToGallery(blob, filename) {
 }
 
 window.alterMobile = {
+  clearSelectedFile() {
+    selectedFile = null;
+    if (selectedFileUrl) URL.revokeObjectURL(selectedFileUrl);
+    selectedFileUrl = '';
+    return '';
+  },
   setSelectedFile(file) {
     selectedFile = file || null;
     if (selectedFileUrl) URL.revokeObjectURL(selectedFileUrl);

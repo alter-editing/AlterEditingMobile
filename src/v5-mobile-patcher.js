@@ -1,5 +1,5 @@
 const REMOVE_NAL_TYPES = new Set([6, 9]); // SEI, AUD
-const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'stsd', 'edts', 'udta', 'meta', 'ilst', 'dinf', 'avc1', 'mp4a']);
+const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'edts', 'udta', 'meta', 'ilst', 'dinf', 'avc1', 'mp4a']);
 
 function be32(buf, o) { return new DataView(buf.buffer, buf.byteOffset + o, 4).getUint32(0, false); }
 function wr32(buf, o, v) { new DataView(buf.buffer, buf.byteOffset + o, 4).setUint32(0, v >>> 0, false); }
@@ -31,7 +31,6 @@ function parseBoxes(data, start = 0, end = data.length) {
     const box = { type, start: p, header, end: p + size, children: [] };
     let childStart = p + header;
     if (type === 'meta') childStart += 4;
-    else if (type === 'stsd') childStart = p + header + 8;
     else if (type === 'avc1' || type === 'mp4a') childStart = p + header + (type === 'avc1' ? 78 : 28);
     if (CONTAINERS.has(type) && childStart < p + size) box.children = parseBoxes(data, childStart, p + size);
     out.push(box);
@@ -142,6 +141,22 @@ function shiftBefore(events, offset) {
   for (const [pos, delta] of events) { if (pos <= offset) s += delta; else break; }
   return s;
 }
+
+function patchFtypToIsom(data) {
+  const ftyp = parseBoxes(data).find(b => b.type === 'ftyp');
+  if (!ftyp || ftyp.end - ftyp.start < 16) return;
+  const majorPos = ftyp.start + 8;
+  data.set(bytesOfAscii('isom'), majorPos);
+  // Keep minor_version as-is, but normalize compatible brands where there is room.
+  // This mirrors the desktop V5 remux target closer than leaving Samsung/MediaCodec mp42.
+  const brands = ['isom', 'iso2', 'avc1', 'mp41'];
+  let p = ftyp.start + 16;
+  for (const brand of brands) {
+    if (p + 4 > ftyp.end) break;
+    data.set(bytesOfAscii(brand), p);
+    p += 4;
+  }
+}
 function hasH264SampleEntry(videoTrak) {
   return findPath(videoTrak, ['mdia', 'minf', 'stbl', 'stsd'])[0]?.children?.some(b => b.type === 'avc1') || false;
 }
@@ -229,7 +244,8 @@ export async function runV5MobilePatcher(file, { onProgress } = {}) {
     if (mdat.header === 8) wr32(packed, mdat.start, newMdatSize);
     else wr64(packed, mdat.start + 8, newMdatSize);
   }
+  patchFtypToIsom(packed);
   patchTkhdMatrix(packed);
   onProgress?.(95);
-  return new Blob([packed], { type: file.type || 'video/mp4' });
+  return new Blob([packed], { type: 'video/mp4' });
 }
