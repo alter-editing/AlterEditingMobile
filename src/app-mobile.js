@@ -894,21 +894,33 @@ async function runPatchWithHevcFallback(){
     toast('HEVC/H.265', 'Конвертация в H.264...');
 
     const originalFile=state.file;
+
+    // 1. Рендерим HEVC/H.265 в H.264 через Android TranscodeBridge
     const h264File=await transcodeSelectedVideoToH264(originalFile);
 
+    // 2. Проверяем, что новый файл реально MP4/MOV контейнер
     const validContainer = await hasValidMp4MovStructure(h264File).catch(()=>false);
-    if(!validContainer) throw new Error(t('unsupportedPatchFormat'));
-
-    state.file=h264File;
-    try{
-      state.fileUrl=window.alterMobile.setSelectedFile(h264File);
-      renderVideo();
-      log('info','loaded',h264File.name);
-      $('patchProgress')?.style.setProperty('--progress','78%');
-      return await window.alterE.video.patch({});
-    }catch(secondError){
-      throw secondError;
+    if(!validContainer){
+      throw new Error(t('unsupportedPatchFormat'));
     }
+
+    // 3. Обязательно меняем текущий файл приложения на уже готовый H.264
+    state.file = h264File;
+
+    // 4. Обязательно обновляем selected file в alterMobile, иначе V5 снова возьмёт старый HEVC
+    state.fileUrl = window.alterMobile.setSelectedFile(h264File);
+
+    // 5. Обновляем превью и логи
+    renderVideo();
+    log('info','loaded',h264File.name);
+
+    // 6. Даём WebView/native bridge время обновить выбранный файл
+    await new Promise(r => setTimeout(r, 400));
+
+    // 7. Теперь V5 патчит уже H.264 файл
+    $('patchProgress')?.style.setProperty('--progress','82%');
+
+    return await window.alterE.video.patch({});
   }
 }
 
