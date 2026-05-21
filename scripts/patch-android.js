@@ -5,6 +5,7 @@ const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest
 const xmlDir = path.join('android', 'app', 'src', 'main', 'res', 'xml');
 const networkConfigPath = path.join(xmlDir, 'network_security_config.xml');
 const fileProviderPathsPath = path.join(xmlDir, 'file_paths.xml');
+const mediaCapabilitiesPath = path.join(xmlDir, 'media_capabilities.xml');
 
 if (!fs.existsSync(manifestPath)) {
   throw new Error(`AndroidManifest.xml not found: ${manifestPath}`);
@@ -20,6 +21,16 @@ fs.writeFileSync(networkConfigPath, `<?xml version="1.0" encoding="utf-8"?>
         <domain includeSubdomains="true">83.147.241.28</domain>
     </domain-config>
 </network-security-config>
+`, 'utf8');
+
+
+fs.writeFileSync(mediaCapabilitiesPath, `<?xml version="1.0" encoding="utf-8"?>
+<media-capabilities xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Tell Android that this app does not want HEVC input.
+         On Android 12+ the system can deliver a compatible AVC/H.264 copy
+         from the gallery picker before the JS V5 patcher receives the file. -->
+    <format android:name="HEVC" supported="false" />
+</media-capabilities>
 `, 'utf8');
 
 fs.writeFileSync(fileProviderPathsPath, `<?xml version="1.0" encoding="utf-8"?>
@@ -104,6 +115,16 @@ manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
   return `<application${next}>`;
 });
 
+
+if (!manifest.includes('android.media.PROPERTY_MEDIA_CAPABILITIES')) {
+  manifest = manifest.replace(
+    '</application>',
+    `    <property
+        android:name="android.media.PROPERTY_MEDIA_CAPABILITIES"
+        android:resource="@xml/media_capabilities" />
+</application>`
+  );
+}
 
 
 if (!manifest.includes('android:name="androidx.core.content.FileProvider"')) {
