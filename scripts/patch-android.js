@@ -2,16 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
-const xmlDir = path.join('android', 'app', 'src', 'main', 'res', 'xml');
+const manifestCandidates = [
+  path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml'),
+  path.join('android', 'src', 'main', 'AndroidManifest.xml')
+];
+const manifestPath = manifestCandidates.find(p => fs.existsSync(p));
+const manifestBaseDir = manifestPath ? path.dirname(manifestPath) : path.join('android', 'app', 'src', 'main');
+const xmlDir = path.join(manifestBaseDir, 'res', 'xml');
 const networkConfigPath = path.join(xmlDir, 'network_security_config.xml');
 const fileProviderPathsPath = path.join(xmlDir, 'file_paths.xml');
 const mediaCapabilitiesPath = path.join(xmlDir, 'media_capabilities.xml');
 
-if (!fs.existsSync(manifestPath)) {
-  throw new Error(`AndroidManifest.xml not found: ${manifestPath}`);
+if (!manifestPath) {
+  console.warn('[WARN] AndroidManifest.xml not found, skipping manifest patch');
+} else {
+  console.log('[OK] Manifest:', manifestPath);
 }
 
+if (manifestPath) {
 fs.mkdirSync(xmlDir, { recursive: true });
 
 fs.writeFileSync(networkConfigPath, `<?xml version="1.0" encoding="utf-8"?>
@@ -202,7 +210,7 @@ manifest = manifest.replace(/<activity\b([^>]*android:name="[^"]*MainActivity"[^
 });
 
 fs.writeFileSync(manifestPath, manifest, 'utf8');
-
+}
 
 // Keep Android versionCode/versionName aligned with GitHub releases so sideloaded
 // APK updates can install over the previous version. The APK signature must also
@@ -1338,21 +1346,22 @@ console.log('Android cleartext/network config patched.');
   try {
     const gradlePath = path.join('android', 'app', 'build.gradle');
     const libsDir = path.join('android', 'app', 'libs');
-    const aarName = 'ffmpeg-kit-full-gpl-6.0-2.LTS.aar';
+    const aarName = 'ffmpeg-kit-full.aar';
     const aarPath = path.join(libsDir, aarName);
-    const aarUrl = 'https://artifactory.appodeal.com/appodeal-public/com/arthenica/ffmpeg-kit-full-gpl/6.0-2.LTS/ffmpeg-kit-full-gpl-6.0-2.LTS.aar';
+    const sourceAarPath = path.join('libs', 'ffmpeg-kit-full.aar');
 
     fs.mkdirSync(libsDir, { recursive: true });
-    if (!fs.existsSync(aarPath) || fs.statSync(aarPath).size < 1024 * 1024) {
-      console.log('[INFO] Downloading local ffmpeg-kit AAR...');
-      execFileSync('curl', ['-L', '--fail', '--retry', '3', '-o', aarPath, aarUrl], { stdio: 'inherit' });
+    if (!fs.existsSync(sourceAarPath)) {
+      throw new Error(`Local AAR not found: ${sourceAarPath}`);
     }
+    fs.copyFileSync(sourceAarPath, aarPath);
+    console.log('[OK] Local ffmpeg-kit AAR copied:', aarPath);
 
     if (fs.existsSync(gradlePath)) {
       let gradle = fs.readFileSync(gradlePath, 'utf8');
       gradle = gradle.replace(/\s*implementation\s+["']com\.arthenica:ffmpeg-kit-[^"']+["']\s*/g, '\n');
       gradle = gradle.replace(/\s*implementation\s+files\(["']libs\/ffmpeg-kit-[^"']+\.aar["']\)\s*/g, '\n');
-      if (!/ffmpeg-kit-full-gpl-6\.0-2\.LTS\.aar/.test(gradle)) {
+      if (!/ffmpeg-kit-full\.aar/.test(gradle)) {
         gradle = gradle.replace(/dependencies\s*\{/, `dependencies {\n    implementation files('libs/ffmpeg-kit-full.aar')`);
       }
       fs.writeFileSync(gradlePath, gradle, 'utf8');
