@@ -1348,14 +1348,14 @@ console.log('Android cleartext/network config patched.');
     const libsDir = path.join('android', 'app', 'libs');
     const aarName = 'ffmpeg-kit-full.aar';
     const aarPath = path.join(libsDir, aarName);
-    const sourceAarPath = path.join('libs', 'ffmpeg-kit-full.aar');
+    const sourceAarPath = path.join('libs', 'ffmpeg-kit-full-gpl.aar');
 
     fs.mkdirSync(libsDir, { recursive: true });
     if (!fs.existsSync(sourceAarPath)) {
-      throw new Error(`Local AAR not found: ${sourceAarPath}`);
+      throw new Error(`Local GPL AAR not found: ${sourceAarPath}. Put ffmpeg-kit-full-gpl.aar into project libs/ before building.`);
     }
     fs.copyFileSync(sourceAarPath, aarPath);
-    console.log('[OK] Local ffmpeg-kit AAR copied:', aarPath);
+    console.log('[OK] Local ffmpeg-kit FULL-GPL AAR copied:', aarPath);
 
     if (fs.existsSync(gradlePath)) {
       let gradle = fs.readFileSync(gradlePath, 'utf8');
@@ -1465,10 +1465,12 @@ public class TranscodeBridge {
         File input;
         File output;
         FileOutputStream inputStream;
-        Session(File input, File output, FileOutputStream inputStream) {
+        String mode;
+        Session(File input, File output, FileOutputStream inputStream, String mode) {
             this.input = input;
             this.output = output;
             this.inputStream = inputStream;
+            this.mode = mode == null ? "x264" : mode;
         }
     }
 
@@ -1483,14 +1485,21 @@ public class TranscodeBridge {
 
     @JavascriptInterface
     public synchronized String beginTranscode(String filename, String mimeType) {
+        return beginV5Process(filename, mimeType, "x264");
+    }
+
+    @JavascriptInterface
+    public synchronized String beginV5Process(String filename, String mimeType, String mode) {
         try {
             String token = UUID.randomUUID().toString();
             File dir = new File(context.getCacheDir(), "alter_transcode");
             if (!dir.exists()) dir.mkdirs();
             File input = new File(dir, token + "_" + safeName(filename));
-            File output = new File(dir, token + "_h264.mp4");
+            File output = new File(dir, token + "_v5norm.mp4");
             FileOutputStream stream = new FileOutputStream(input);
-            sessions.put(token, new Session(input, output, stream));
+            String cleanMode = mode == null ? "x264" : mode.trim().toLowerCase();
+            if (!cleanMode.equals("copy") && !cleanMode.equals("x264")) cleanMode = "x264";
+            sessions.put(token, new Session(input, output, stream, cleanMode));
             return token;
         } catch (Exception e) {
             return "ERROR:" + e.getMessage();
@@ -1518,34 +1527,48 @@ public class TranscodeBridge {
             s.inputStream.flush();
             s.inputStream.close();
 
-            // Use executeWithArguments, not one big quoted command string.
-            // This avoids Android/FFmpegKit parser crashes on paths with spaces or Cyrillic symbols.
-            String[] args = new String[] {
-                "-y",
-                "-hide_banner",
-                "-loglevel", "error",
-
-                "-i", s.input.getAbsolutePath(),
-
-                "-map", "0:v:0",
-                "-map", "0:a?",
-
-                "-vf", "scale='min(1080,iw)':-2",
-
-                "-c:v", "h264",
-                "-pix_fmt", "yuv420p",
-
-                "-b:v", "6000k",
-                "-r", "30",
-                "-g", "30",
-
-                "-c:a", "aac",
-                "-b:a", "128k",
-
-                "-movflags", "+faststart",
-
-                s.output.getAbsolutePath()
-            };
+            // Desktop V5-compatible normalizer.
+            // copy mode matches the PC pre-remux exactly:
+            // ffmpeg -map 0:v:0 -map 0:a? -c copy -video_track_timescale 90000 -map_metadata -1 -brand isom -movflags +faststart
+            // x264 mode is used only when the source is HEVC/H.265 and must become real AVC/H.264 before V5.
+            String[] args;
+            if ("copy".equals(s.mode)) {
+                args = new String[] {
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel", "error",
+                    "-i", s.input.getAbsolutePath(),
+                    "-map", "0:v:0",
+                    "-map", "0:a?",
+                    "-c", "copy",
+                    "-video_track_timescale", "90000",
+                    "-map_metadata", "-1",
+                    "-brand", "isom",
+                    "-movflags", "+faststart",
+                    s.output.getAbsolutePath()
+                };
+            } else {
+                args = new String[] {
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel", "error",
+                    "-i", s.input.getAbsolutePath(),
+                    "-map", "0:v:0",
+                    "-map", "0:a?",
+                    "-c:v", "libx264",
+                    "-preset", "veryfast",
+                    "-crf", "18",
+                    "-profile:v", "high",
+                    "-pix_fmt", "yuv420p",
+                    "-c:a", "aac",
+                    "-b:a", "192k",
+                    "-video_track_timescale", "90000",
+                    "-map_metadata", "-1",
+                    "-brand", "isom",
+                    "-movflags", "+faststart",
+                    s.output.getAbsolutePath()
+                };
+            }
 
             com.arthenica.ffmpegkit.Session ff = FFmpegKit.executeWithArguments(args);
             ReturnCode rc = ff.getReturnCode();

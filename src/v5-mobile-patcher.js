@@ -137,6 +137,37 @@ function patchTkhdMatrix(data) {
   const matrixStart = start + 48;
   if (matrixStart + 36 <= start + be32(data, start)) data.set(new Uint8Array([0, 0, 0, 1]), matrixStart + 4);
 }
+
+function patchBtrt(data, bitrate) {
+  const pos = indexOfBytes(data, bytesOfAscii('btrt'));
+  if (pos < 4) return;
+  const start = pos - 4;
+  if (be32(data, start) !== 20) return;
+  wr32(data, start + 12, bitrate);
+  wr32(data, start + 16, bitrate);
+}
+
+function estimateVideoBitrate(file, videoTrak, data) {
+  try {
+    const mdhd = findPath(videoTrak, ['mdia', 'mdhd'])[0];
+    if (!mdhd) return 0;
+    const p = mdhd.start + mdhd.header;
+    const version = data[p];
+    let timescale = 0;
+    let duration = 0;
+    if (version === 1) {
+      timescale = be32(data, p + 20);
+      duration = be64(data, p + 24);
+    } else {
+      timescale = be32(data, p + 12);
+      duration = be32(data, p + 16);
+    }
+    if (!timescale || !duration) return 0;
+    const seconds = duration / timescale;
+    if (!seconds || !Number.isFinite(seconds)) return 0;
+    return Math.max(1, Math.round((file.size * 8) / seconds));
+  } catch (_) { return 0; }
+}
 function shiftBefore(events, offset) {
   let s = 0;
   for (const [pos, delta] of events) { if (pos <= offset) s += delta; else break; }
@@ -281,8 +312,11 @@ export async function runV5MobilePatcher(file, { onProgress } = {}) {
     if (mdat.header === 8) wr32(packed, mdat.start, newMdatSize);
     else wr64(packed, mdat.start + 8, newMdatSize);
   }
-  patchFtypBrand(packed);
+  // The desktop V5 gets ftyp/isom and compatible brands from the FFmpeg pre-remux stage.
+  // Do not rewrite ftyp here; keeping FFmpeg output avoids mobile-only brand differences.
   patchTkhdMatrix(packed);
+  const estimatedBitrate = estimateVideoBitrate(file, videoTrak, packed);
+  if (estimatedBitrate > 0) patchBtrt(packed, estimatedBitrate);
   onProgress?.(95);
   return new Blob([packed], { type: file.type || 'video/mp4' });
 }

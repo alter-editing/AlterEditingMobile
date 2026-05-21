@@ -286,40 +286,44 @@ function hasNativeTranscodeBridge() {
   return Boolean(b && typeof b.beginTranscode === 'function' && typeof b.appendInputChunk === 'function' && typeof b.finishTranscode === 'function' && typeof b.readResultChunk === 'function' && typeof b.releaseResult === 'function');
 }
 
-async function nativeTranscodeToH264(file) {
+async function nativeNormalizeForV5(file, mode = 'copy') {
   const bridge = window.AlterTranscode;
   if (!hasNativeTranscodeBridge()) {
-    throw new Error('H.265/HEVC fallback is unavailable in this APK. Rebuild the Android project with scripts/patch-android.js so FFmpegKit bridge is added.');
+    throw new Error('Desktop V5 normalizer is unavailable in this APK. Rebuild the Android project with scripts/patch-android.js so FFmpegKit bridge is added.');
   }
-  emitProgress(8);
-  const token = String(bridge.beginTranscode(file.name || 'input.mp4', file.type || 'video/mp4') || '');
-  if (!token || token.startsWith('ERROR:')) throw new Error(token.replace(/^ERROR:/, '') || 'transcode_begin_failed');
+  emitProgress(mode === 'copy' ? 8 : 6);
+  const begin = typeof bridge.beginV5Process === 'function'
+    ? bridge.beginV5Process(file.name || 'input.mp4', file.type || 'video/mp4', mode)
+    : bridge.beginTranscode(file.name || 'input.mp4', file.type || 'video/mp4');
+  const token = String(begin || '');
+  if (!token || token.startsWith('ERROR:')) throw new Error(token.replace(/^ERROR:/, '') || 'v5_normalize_begin_failed');
   try {
     const base64 = await blobToBase64(file);
     const chunkSize = 64 * 1024;
     for (let i = 0; i < base64.length; i += chunkSize) {
       const part = String(bridge.appendInputChunk(token, base64.slice(i, i + chunkSize)) || '');
-      if (part !== 'OK') throw new Error(part.replace(/^ERROR:/, '') || 'transcode_chunk_failed');
-      if ((i & ((64 * 1024 * 8) - 1)) === 0) emitProgress(8 + Math.round((i / Math.max(1, base64.length)) * 18));
+      if (part !== 'OK') throw new Error(part.replace(/^ERROR:/, '') || 'v5_normalize_chunk_failed');
+      if ((i & ((64 * 1024 * 8) - 1)) === 0) emitProgress(8 + Math.round((i / Math.max(1, base64.length)) * 17));
     }
-    emitProgress(28);
+    emitProgress(mode === 'copy' ? 28 : 25);
     const done = String(bridge.finishTranscode(token) || '');
-    if (done.startsWith('ERROR:')) throw new Error(done.replace(/^ERROR:/, '') || 'transcode_failed');
-    emitProgress(45);
+    if (done.startsWith('ERROR:')) throw new Error(done.replace(/^ERROR:/, '') || 'v5_normalize_failed');
+    emitProgress(mode === 'copy' ? 42 : 45);
     const size = Number(bridge.getResultSize(token) || 0);
-    if (!Number.isFinite(size) || size <= 0) throw new Error('transcode_empty_result');
+    if (!Number.isFinite(size) || size <= 0) throw new Error('v5_normalize_empty_result');
     const outParts = [];
     const readSize = 48 * 1024;
     for (let offset = 0; offset < size; offset += readSize) {
       const chunk = String(bridge.readResultChunk(token, offset, Math.min(readSize, size - offset)) || '');
-      if (chunk.startsWith('ERROR:')) throw new Error(chunk.replace(/^ERROR:/, '') || 'transcode_read_failed');
+      if (chunk.startsWith('ERROR:')) throw new Error(chunk.replace(/^ERROR:/, '') || 'v5_normalize_read_failed');
       const bin = atob(chunk);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
       outParts.push(bytes);
       emitProgress(45 + Math.round((offset / Math.max(1, size)) * 10));
     }
-    return new File(outParts, (file.name || 'video.mp4').replace(/\.(mov|mp4)$/i, '_h264.mp4'), { type: 'video/mp4' });
+    const suffix = mode === 'copy' ? '_v5tmp.mp4' : '_h264_v5tmp.mp4';
+    return new File(outParts, (file.name || 'video.mp4').replace(/\.(mov|mp4)$/i, suffix), { type: 'video/mp4' });
   } finally {
     try { bridge.releaseResult(token); } catch (_) {}
   }
@@ -332,31 +336,20 @@ async function patchFileToBlob(file) {
   if (!SUPPORTED_EXTENSIONS.includes(ext)) throw new Error('Only MP4 and MOV are supported.');
   emitProgress(5);
 
-  // One authority for codec fallback: this bridge. The UI must not re-transcode.
-  // First try the selected file. If it is AVC/H.264, V5 runs immediately.
-  try {
-    return await runV5MobilePatcher(file, { onProgress: emitProgress });
-  } catch (error) {
-    const raw = String(error?.message || error || '');
-    const needsH264 = /V5 supports only H\.264\/AVC|supports only H\.264|HEVC|H\.265|h265|hevc/i.test(raw);
-    if (!needsH264) throw error;
+  // Exact desktop V5 chain on mobile:
+  // 1) If source is already AVC/H.264: FFmpeg copy remux with the same PC args.
+  // 2) If source is HEVC/H.265: software libx264 render with the same container normalization.
+  // 3) Run the same binary V5 NAL/table patch on that normalized temp file.
+  const isH264 = await isV5H264CompatibleFile(file).catch(() => false);
+  const normalized = await nativeNormalizeForV5(file, isH264 ? 'copy' : 'x264');
+  emitProgress(58);
 
-    // Do not loop forever on files already produced by this fallback.
-    if (/_h264(?:_h264)*\.(mp4|mov)$/i.test(file.name || '')) {
-      throw error;
-    }
-
-    const h264File = await nativeTranscodeToH264(file);
-    emitProgress(56);
-
-    // Verify the MP4 sample entry before running V5. This catches bad Android encoder output cleanly.
-    const compatible = await isV5H264CompatibleFile(h264File);
-    if (!compatible) {
-      throw new Error('HEVC fallback produced a file that is still not AVC/H.264 for V5. Use a different ffmpeg-kit build or render the video in H.264 before patching.');
-    }
-
-    return runV5MobilePatcher(h264File, { onProgress: (p) => emitProgress(56 + Math.round((Number(p) || 0) * 0.44)) });
+  const compatible = await isV5H264CompatibleFile(normalized).catch(() => false);
+  if (!compatible) {
+    throw new Error('V5 normalize stage did not produce AVC/H.264. Check that libs/ffmpeg-kit-full-gpl.aar is included in the APK and contains libx264.');
   }
+
+  return runV5MobilePatcher(normalized, { onProgress: (p) => emitProgress(58 + Math.round((Number(p) || 0) * 0.42)) });
 }
 
 

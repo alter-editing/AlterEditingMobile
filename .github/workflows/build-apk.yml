@@ -152,7 +152,17 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: node scripts/patch-android.js
+        run: |
+          node scripts/patch-android.js
+          echo "=== FFmpegKit AAR check ==="
+          ls -lh libs/ffmpeg-kit-full-gpl.aar android/app/libs/ffmpeg-kit-full.aar
+          test -s libs/ffmpeg-kit-full-gpl.aar
+          test -s android/app/libs/ffmpeg-kit-full.aar
+          AAR_SIZE=$(stat -c%s android/app/libs/ffmpeg-kit-full.aar)
+          if [ "$AAR_SIZE" -lt 60000000 ]; then
+            echo "ERROR: ffmpeg-kit FULL-GPL AAR is too small or missing from android/app/libs."
+            exit 1
+          fi
 
       - name: Build APK
         shell: bash
