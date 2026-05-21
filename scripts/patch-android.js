@@ -1339,7 +1339,7 @@ console.log('Android cleartext/network config patched.');
     if (fs.existsSync(gradlePath)) {
       let gradle = fs.readFileSync(gradlePath, 'utf8');
       if (!/ffmpeg-kit-full-gpl/.test(gradle)) {
-        gradle = gradle.replace(/dependencies\s*\{/, 'dependencies {\n    implementation "com.arthenica:ffmpeg-kit-full-gpl:6.0-2"');
+        gradle = gradle.replace(/dependencies\s*\{/, 'dependencies {\n    implementation "com.arthenica:ffmpeg-kit-full:6.0-2.LTS""');
       }
       fs.writeFileSync(gradlePath, gradle, 'utf8');
     }
