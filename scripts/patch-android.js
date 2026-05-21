@@ -1524,20 +1524,26 @@ public class TranscodeBridge {
                 "-y",
                 "-hide_banner",
                 "-loglevel", "error",
+
                 "-i", s.input.getAbsolutePath(),
+
                 "-map", "0:v:0",
                 "-map", "0:a?",
+
                 "-vf", "scale='min(1080,iw)':-2",
-                "-c:v", "h264_mediacodec",
+
+                "-c:v", "h264",
                 "-pix_fmt", "yuv420p",
-                "-b:v", "8000k",
-                "-maxrate", "10000k",
-                "-bufsize", "16000k",
-                "-g", "30",
+
+                "-b:v", "6000k",
                 "-r", "30",
+                "-g", "30",
+
                 "-c:a", "aac",
-                "-b:a", "160k",
+                "-b:a", "128k",
+
                 "-movflags", "+faststart",
+
                 s.output.getAbsolutePath()
             };
 
