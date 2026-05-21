@@ -1472,20 +1472,41 @@ public class TranscodeBridge {
         try {
             s.inputStream.flush();
             s.inputStream.close();
-            String cmd = "-y -hide_banner -loglevel error -i " + q(s.input.getAbsolutePath()) +
-                " -map 0:v:0 -map 0:a? -c:v libx264 -preset veryfast -crf 18 -profile:v high -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart " + q(s.output.getAbsolutePath());
-            com.arthenica.ffmpegkit.Session ff = FFmpegKit.execute(cmd);
+
+            // Use executeWithArguments, not one big quoted command string.
+            // This avoids Android/FFmpegKit parser crashes on paths with spaces or Cyrillic symbols.
+            String[] args = new String[] {
+                "-y",
+                "-hide_banner",
+                "-loglevel", "error",
+                "-i", s.input.getAbsolutePath(),
+                "-map", "0:v:0",
+                "-map", "0:a?",
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-crf", "18",
+                "-profile:v", "high",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-movflags", "+faststart",
+                s.output.getAbsolutePath()
+            };
+
+            com.arthenica.ffmpegkit.Session ff = FFmpegKit.executeWithArguments(args);
             ReturnCode rc = ff.getReturnCode();
             if (!ReturnCode.isSuccess(rc)) {
                 String logs = ff.getAllLogsAsString();
                 if (logs == null || logs.trim().isEmpty()) logs = "ffmpeg_transcode_failed";
-                if (logs.length() > 700) logs = logs.substring(logs.length() - 700);
+                if (logs.length() > 1200) logs = logs.substring(logs.length() - 1200);
                 return "ERROR:" + logs;
             }
             if (!s.output.exists() || s.output.length() <= 0) return "ERROR:empty_transcode_output";
             return "OK";
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
+        } catch (Throwable e) {
+            String cls = e.getClass() == null ? "Throwable" : e.getClass().getName();
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            return "ERROR:JAVA:" + cls + ":" + msg;
         }
     }
 
