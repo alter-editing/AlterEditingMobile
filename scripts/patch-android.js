@@ -1,25 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 
-const manifestCandidates = [
-  path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml'),
-  path.join('android', 'src', 'main', 'AndroidManifest.xml')
-];
-const manifestPath = manifestCandidates.find(p => fs.existsSync(p));
-const manifestBaseDir = manifestPath ? path.dirname(manifestPath) : path.join('android', 'app', 'src', 'main');
-const xmlDir = path.join(manifestBaseDir, 'res', 'xml');
+const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
+const xmlDir = path.join('android', 'app', 'src', 'main', 'res', 'xml');
 const networkConfigPath = path.join(xmlDir, 'network_security_config.xml');
 const fileProviderPathsPath = path.join(xmlDir, 'file_paths.xml');
-const mediaCapabilitiesPath = path.join(xmlDir, 'media_capabilities.xml');
 
-if (!manifestPath) {
-  console.warn('[WARN] AndroidManifest.xml not found, skipping manifest patch');
-} else {
-  console.log('[OK] Manifest:', manifestPath);
+if (!fs.existsSync(manifestPath)) {
+  throw new Error(`AndroidManifest.xml not found: ${manifestPath}`);
 }
 
-if (manifestPath) {
 fs.mkdirSync(xmlDir, { recursive: true });
 
 fs.writeFileSync(networkConfigPath, `<?xml version="1.0" encoding="utf-8"?>
@@ -30,16 +20,6 @@ fs.writeFileSync(networkConfigPath, `<?xml version="1.0" encoding="utf-8"?>
         <domain includeSubdomains="true">83.147.241.28</domain>
     </domain-config>
 </network-security-config>
-`, 'utf8');
-
-
-fs.writeFileSync(mediaCapabilitiesPath, `<?xml version="1.0" encoding="utf-8"?>
-<media-capabilities xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Tell Android that this app does not want HEVC input.
-         On Android 12+ the system can deliver a compatible AVC/H.264 copy
-         from the gallery picker before the JS V5 patcher receives the file. -->
-    <format android:name="HEVC" supported="false" />
-</media-capabilities>
 `, 'utf8');
 
 fs.writeFileSync(fileProviderPathsPath, `<?xml version="1.0" encoding="utf-8"?>
@@ -126,16 +106,6 @@ manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
 });
 
 
-if (!manifest.includes('android.media.PROPERTY_MEDIA_CAPABILITIES')) {
-  manifest = manifest.replace(
-    '</application>',
-    `    <property
-        android:name="android.media.PROPERTY_MEDIA_CAPABILITIES"
-        android:resource="@xml/media_capabilities" />
-</application>`
-  );
-}
-
 
 if (!manifest.includes('android:name="androidx.core.content.FileProvider"')) {
   manifest = manifest.replace(
@@ -206,15 +176,12 @@ manifest = manifest.replace(/<activity\b([^>]*android:name="[^"]*MainActivity"[^
   };
   setAttr('android:launchMode', 'singleTask');
   setAttr('android:alwaysRetainTaskState', 'true');
-  setAttr('android:finishOnTaskLaunch', 'false');
-  setAttr('android:clearTaskOnLaunch', 'false');
-  setAttr('android:stateNotNeeded', 'false');
   setAttr('android:configChanges', 'orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode');
   return `<activity${next}>`;
 });
 
 fs.writeFileSync(manifestPath, manifest, 'utf8');
-}
+
 
 // Keep Android versionCode/versionName aligned with GitHub releases so sideloaded
 // APK updates can install over the previous version. The APK signature must also
@@ -534,14 +501,12 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
-import android.os.PowerManager;
 
 public class KeepAliveService extends Service {
     public static final String ACTION_START = "${packageName}.KEEP_ALIVE_START";
     public static final String ACTION_STOP = "${packageName}.KEEP_ALIVE_STOP";
     private static final String CHANNEL_ID = "alter_keep_alive";
     private static final int NOTIFICATION_ID = 4207;
-    private PowerManager.WakeLock wakeLock;
 
     @Override
     public void onCreate() {
@@ -553,13 +518,11 @@ public class KeepAliveService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_STOP.equals(action)) {
-            releaseWakeLock();
             stopForegroundCompat();
             stopSelf();
             return START_NOT_STICKY;
         }
         startForegroundCompat(buildNotification());
-        acquireWakeLock();
         return START_STICKY;
     }
 
@@ -570,35 +533,10 @@ public class KeepAliveService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // Keep the foreground service alive for a short period even if Android
-        // temporarily removes the task while external apps/pickers are active.
-        // It is stopped explicitly from JS when the app returns or the operation ends.
+        // On weak Android devices Telegram/gallery can make the task look removed
+        // for a moment. Keep the foreground service alive; JS will stop it after
+        // auth/file flow completes.
         super.onTaskRemoved(rootIntent);
-    }
-
-
-    @Override
-    public void onDestroy() {
-        releaseWakeLock();
-        super.onDestroy();
-    }
-
-    private void acquireWakeLock() {
-        try {
-            if (wakeLock != null && wakeLock.isHeld()) return;
-            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-            if (pm == null) return;
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getPackageName() + ":AlterKeepAlive");
-            wakeLock.setReferenceCounted(false);
-            wakeLock.acquire(10 * 60 * 1000L);
-        } catch (Throwable ignored) {}
-    }
-
-    private void releaseWakeLock() {
-        try {
-            if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
-        } catch (Throwable ignored) {}
-        wakeLock = null;
     }
 
     private void createChannel() {
@@ -1372,299 +1310,5 @@ console.log('Android cleartext/network config patched.');
     console.log('[OK] TikTok Upload is forced to Brave only. No Edge fallback.');
   } catch (e) {
     console.warn('[WARN] Brave-only post patch skipped:', e && e.message ? e.message : e);
-  }
-})();
-
-// === V5 HEVC/H.265 fallback: FFmpegKit bridge for native HEVC -> H.264 conversion ===
-(function addV5TranscodeFallback(){
-  try {
-    const gradlePath = path.join('android', 'app', 'build.gradle');
-    const libsDir = path.join('android', 'app', 'libs');
-    const aarName = 'ffmpeg-kit-full.aar';
-    const aarPath = path.join(libsDir, aarName);
-    const sourceAarPath = path.join('libs', 'ffmpeg-kit-full-gpl.aar');
-
-    fs.mkdirSync(libsDir, { recursive: true });
-    if (!fs.existsSync(sourceAarPath)) {
-      throw new Error(`Local GPL AAR not found: ${sourceAarPath}. Put ffmpeg-kit-full-gpl.aar into project libs/ before building.`);
-    }
-    fs.copyFileSync(sourceAarPath, aarPath);
-    console.log('[OK] Local ffmpeg-kit FULL-GPL AAR copied:', aarPath);
-
-    if (fs.existsSync(gradlePath)) {
-      let gradle = fs.readFileSync(gradlePath, 'utf8');
-      gradle = gradle.replace(/\s*implementation\s+["']com\.arthenica:ffmpeg-kit-[^"']+["']\s*/g, '\n');
-      gradle = gradle.replace(/\s*implementation\s+files\(["']libs\/ffmpeg-kit-[^"']+\.aar["']\)\s*/g, '\n');
-      if (!/ffmpeg-kit-full\.aar/.test(gradle)) {
-        gradle = gradle.replace(/dependencies\s*\{/, `dependencies {\n    implementation files('libs/ffmpeg-kit-full.aar')`);
-      }
-      fs.writeFileSync(gradlePath, gradle, 'utf8');
-    }
-
-    const settingsPath = path.join('android', 'settings.gradle');
-    if (fs.existsSync(settingsPath)) {
-      let settings = fs.readFileSync(settingsPath, 'utf8');
-      if (!/mavenCentral\(\)/.test(settings)) {
-        settings = settings.replace(/repositories\s*\{/, 'repositories {\n        mavenCentral()');
-      }
-      fs.writeFileSync(settingsPath, settings, 'utf8');
-    }
-
-    function walk(dir, found = []) {
-      if (!fs.existsSync(dir)) return found;
-      for (const item of fs.readdirSync(dir)) {
-        const full = path.join(dir, item);
-        if (fs.statSync(full).isDirectory()) walk(full, found);
-        else found.push(full);
-      }
-      return found;
-    }
-    const javaRoot = path.join('android', 'app', 'src', 'main', 'java');
-    const mainActivityPath = walk(javaRoot).find(p => /MainActivity\.java$/.test(p));
-    if (!mainActivityPath) return;
-
-    // ffmpeg-kit AAR from mirrors often misses its tiny Java dependency:
-    // com.arthenica.smartexception.java.Exceptions.
-    // Add a compatible local stub so FFmpegKit can load at runtime.
-    const smartExceptionDir = path.join(javaRoot, 'com', 'arthenica', 'smartexception', 'java');
-    fs.mkdirSync(smartExceptionDir, { recursive: true });
-    fs.writeFileSync(path.join(smartExceptionDir, 'Exceptions.java'), `package com.arthenica.smartexception.java;
-
-import android.util.Log;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.HashSet;
-import java.util.Set;
-
-public class Exceptions {
-    private static final Set<String> ROOT_PACKAGES = new HashSet<>();
-
-    public static void registerRootPackage(String rootPackage) {
-        try {
-            if (rootPackage != null && rootPackage.length() > 0) {
-                ROOT_PACKAGES.add(rootPackage);
-            }
-        } catch (Throwable ignored) {}
-    }
-
-    public static String getStackTraceString(Throwable throwable) {
-        if (throwable == null) return "";
-        try {
-            return Log.getStackTraceString(throwable);
-        } catch (Throwable ignored) {
-            try {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                throwable.printStackTrace(pw);
-                pw.flush();
-                return sw.toString();
-            } catch (Throwable ignored2) {
-                return String.valueOf(throwable);
-            }
-        }
-    }
-}
-`, 'utf8');
-    console.log('[OK] SmartException compatibility class added.');
-
-    let main = fs.readFileSync(mainActivityPath, 'utf8');
-    const pkgMatch = main.match(/package\s+([\w.]+);/);
-    const packageName = pkgMatch ? pkgMatch[1] : 'com.alterediting.method';
-    const packageDir = mainActivityPath.slice(0, mainActivityPath.lastIndexOf(path.sep));
-    if (!main.includes('AlterTranscode')) {
-      main = main.replace('getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");', 'getBridge().getWebView().addJavascriptInterface(new UpdateBridge(this), "AlterUpdate");\n        getBridge().getWebView().addJavascriptInterface(new TranscodeBridge(this), "AlterTranscode");');
-      fs.writeFileSync(mainActivityPath, main, 'utf8');
-    }
-
-    fs.writeFileSync(path.join(packageDir, 'TranscodeBridge.java'), `package ${packageName};
-
-import android.content.Context;
-import android.util.Base64;
-import android.webkit.JavascriptInterface;
-import com.arthenica.ffmpegkit.FFmpegKit;
-import com.arthenica.ffmpegkit.ReturnCode;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-public class TranscodeBridge {
-    private final Context context;
-    private final Map<String, Session> sessions = new HashMap<>();
-
-    private static class Session {
-        File input;
-        File output;
-        FileOutputStream inputStream;
-        String mode;
-        Session(File input, File output, FileOutputStream inputStream, String mode) {
-            this.input = input;
-            this.output = output;
-            this.inputStream = inputStream;
-            this.mode = mode == null ? "x264" : mode;
-        }
-    }
-
-    public TranscodeBridge(Context context) {
-        this.context = context.getApplicationContext();
-    }
-
-    private String safeName(String name) {
-        if (name == null || name.trim().isEmpty()) return "input.mp4";
-        return name.replaceAll("[^A-Za-z0-9._-]", "_");
-    }
-
-    @JavascriptInterface
-    public synchronized String beginTranscode(String filename, String mimeType) {
-        return beginV5Process(filename, mimeType, "x264");
-    }
-
-    @JavascriptInterface
-    public synchronized String beginV5Process(String filename, String mimeType, String mode) {
-        try {
-            String token = UUID.randomUUID().toString();
-            File dir = new File(context.getCacheDir(), "alter_transcode");
-            if (!dir.exists()) dir.mkdirs();
-            File input = new File(dir, token + "_" + safeName(filename));
-            File output = new File(dir, token + "_v5norm.mp4");
-            FileOutputStream stream = new FileOutputStream(input);
-            String cleanMode = mode == null ? "x264" : mode.trim().toLowerCase();
-            if (!cleanMode.equals("copy") && !cleanMode.equals("x264")) cleanMode = "x264";
-            sessions.put(token, new Session(input, output, stream, cleanMode));
-            return token;
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
-        }
-    }
-
-    @JavascriptInterface
-    public synchronized String appendInputChunk(String token, String base64Chunk) {
-        Session s = sessions.get(token);
-        if (s == null) return "ERROR:session_not_found";
-        try {
-            byte[] bytes = Base64.decode(base64Chunk, Base64.DEFAULT);
-            s.inputStream.write(bytes);
-            return "OK";
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
-        }
-    }
-
-    @JavascriptInterface
-    public synchronized String finishTranscode(String token) {
-        Session s = sessions.get(token);
-        if (s == null) return "ERROR:session_not_found";
-        try {
-            s.inputStream.flush();
-            s.inputStream.close();
-
-            // Desktop V5-compatible normalizer.
-            // copy mode is byte-for-byte equivalent in intent to the PC pre-remux stage:
-            // ffmpeg -map 0:v:0 -map 0:a? -c copy -video_track_timescale 90000 -map_metadata -1 -brand isom -movflags +faststart
-            // x264raw mode is used only for HEVC/H.265 input. It creates a temporary real AVC/H.264 file.
-            // The JS chain then runs copy mode on that temp file, so final metadata/order/timebase comes from the exact PC-style remux stage, not from Android/MediaCodec.
-            String[] args;
-            if ("copy".equals(s.mode)) {
-                args = new String[] {
-                    "-y",
-                    "-hide_banner",
-                    "-loglevel", "error",
-                    "-i", s.input.getAbsolutePath(),
-                    "-map", "0:v:0",
-                    "-map", "0:a?",
-                    "-c", "copy",
-                    "-video_track_timescale", "90000",
-                    "-map_metadata", "-1",
-                    "-brand", "isom",
-                    "-movflags", "+faststart",
-                    s.output.getAbsolutePath()
-                };
-            } else {
-                args = new String[] {
-                    "-y",
-                    "-hide_banner",
-                    "-loglevel", "error",
-                    "-i", s.input.getAbsolutePath(),
-                    "-map", "0:v:0",
-                    "-map", "0:a?",
-                    "-c:v", "libx264",
-                    "-preset", "veryfast",
-                    "-crf", "18",
-                    "-profile:v", "high",
-                    "-pix_fmt", "yuv420p",
-                    "-c:a", "aac",
-                    "-b:a", "192k",
-                    s.output.getAbsolutePath()
-                };
-            }
-
-            com.arthenica.ffmpegkit.Session ff = FFmpegKit.executeWithArguments(args);
-            ReturnCode rc = ff.getReturnCode();
-            if (!ReturnCode.isSuccess(rc)) {
-                String logs = ff.getAllLogsAsString();
-                if (logs == null || logs.trim().isEmpty()) logs = "ffmpeg_transcode_failed";
-                if (logs.length() > 1200) logs = logs.substring(logs.length() - 1200);
-                return "ERROR:" + logs;
-            }
-            if (!s.output.exists() || s.output.length() <= 0) return "ERROR:empty_transcode_output";
-            return "OK";
-        } catch (Throwable e) {
-            String cls = e.getClass() == null ? "Throwable" : e.getClass().getName();
-            String msg = e.getMessage() == null ? "" : e.getMessage();
-            return "ERROR:JAVA:" + cls + ":" + msg;
-        }
-    }
-
-    private String q(String v) { return "'" + v.replace("'", "'\\''") + "'"; }
-
-    @JavascriptInterface
-    public synchronized long getResultSize(String token) {
-        Session s = sessions.get(token);
-        if (s == null || s.output == null || !s.output.exists()) return 0;
-        return s.output.length();
-    }
-
-    @JavascriptInterface
-    public synchronized String readResultChunk(String token, int offset, int length) {
-        Session s = sessions.get(token);
-        if (s == null || s.output == null || !s.output.exists()) return "ERROR:session_not_found";
-        try {
-            if (length < 0) length = 0;
-            if (length > 128 * 1024) length = 128 * 1024;
-            byte[] buf = new byte[length];
-            FileInputStream in = new FileInputStream(s.output);
-            long skipped = in.skip(offset);
-            if (skipped < offset) { in.close(); return ""; }
-            int n = in.read(buf);
-            in.close();
-            if (n <= 0) return "";
-            if (n != buf.length) {
-                byte[] exact = new byte[n];
-                System.arraycopy(buf, 0, exact, 0, n);
-                buf = exact;
-            }
-            return Base64.encodeToString(buf, Base64.NO_WRAP);
-        } catch (Exception e) {
-            return "ERROR:" + e.getMessage();
-        }
-    }
-
-    @JavascriptInterface
-    public synchronized String releaseResult(String token) {
-        Session s = sessions.remove(token);
-        if (s == null) return "OK";
-        try { if (s.inputStream != null) s.inputStream.close(); } catch (Exception ignored) {}
-        try { if (s.input != null) s.input.delete(); } catch (Exception ignored) {}
-        try { if (s.output != null) s.output.delete(); } catch (Exception ignored) {}
-        return "OK";
-    }
-}
-`, 'utf8');
-    console.log('[OK] V5 HEVC fallback TranscodeBridge added.');
-  } catch (e) {
-    console.warn('[WARN] V5 HEVC fallback patch skipped:', e && e.message ? e.message : e);
   }
 })();

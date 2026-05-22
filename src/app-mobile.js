@@ -1,10 +1,9 @@
-import { APP_VERSION } from './app-version.js';
 const $ = id => document.getElementById(id);
 
 const i18n = {
-  en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'The video is recorded in an incorrect MP4 container. Please transcode it or render it through CapCut or another convenient app.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Brave will open. If Brave is not installed, Google Play will open so you can install it. Follow the screenshot below after opening Brave.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Brave',desktopUploadCancel:'Cancel'},
-  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Видео записано в неправильном контейнере mp4. Пожалуйста, перекодируйте его или зарендерите его через CapCut или другое удобное приложение',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
-  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Seçmek için tıklayın',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Video yanlış MP4 konteynerinde kaydedilmiş. Lütfen CapCut veya başka uygun bir uygulama ile yeniden kodlayın ya da render alın.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
+  en:{selectVideo:'Select video',changeVideo:'Change video',loaded:'Video loaded',noVideo:'Select a video first.',started:'Patch started',completed:'Patch completed',saved:'File saved:',failed:'Patch failed',unsupported:'Only MP4 and MOV videos are supported.',authorize:'Authorization',authText:'Confirm Telegram subscription to sign in.',authChecking:'Checking authorization...',authWaiting:'Confirm subscription in Telegram and return here.',authSuccess:'Successful authorization',authSuccessShort:'Successful authorization',authFailed:'Authorization failed. Try again.',settings:'Settings',logs:'Logs',language:'Language',themeDark:'Dark theme',themeLight:'Light theme',howToUse:'How to use',tutorialTitle:'How to use',tutorialText:'Select your video and press the "Patch" button, then you can publish the video.',logout:'Logout',copy:'Copy',export:'Export',noLogs:'Logs will appear after app actions.',patch:'Patch',upload:'Upload',dropTitle:'Select video',dropHint:'Drag a file here or tap to select',selectFromGallery:'Select from gallery',unsupportedPatchFormat:'The video is recorded in an incorrect MP4 container. Please transcode it or render it through CapCut or another convenient app.',processedSaved:'Processed video saved to gallery.',videoTooLarge:'This video is larger than 165 MB. The patcher cannot accept videos over 165 MB.',mediaAccessTitle:'Media access',mediaAccessText:'Allow access to all videos so the gallery can show your full video library.',performanceAuto:'Performance: Auto',performanceQuality:'Performance: Full visual',performanceLite:'Performance: Weak phone',updateAvailable:'New version available',updateText:'Version {version} is available. Install the update now.',installUpdate:'Install',later:'Later',currentVersion:'Current version',desktopUploadTitle:'Turn on full site mode',desktopUploadText:'Brave will open. If Brave is not installed, Google Play will open so you can install it. Follow the screenshot below after opening Brave.',desktopUploadStep1Title:'Instruction screenshot',desktopUploadStep1Text:'The screenshot shows which menu button to tap and which full-site button to choose.',desktopUploadStep2Title:'Step 2',desktopUploadStep2Text:'Continue uploading your video after switching to the full site.',desktopUploadConfirm:'Open Brave',desktopUploadCancel:'Cancel'},
+  ru:{selectVideo:'Выбрать видео',changeVideo:'Выбрать другое видео',loaded:'Видео загружено',noVideo:'Сначала выберите видео.',started:'Патч запущен',completed:'Патч завершён',saved:'Файл сохранён:',failed:'Ошибка патча',unsupported:'Поддерживаются только MP4 и MOV видео.',authorize:'Авторизация',authText:'Подтвердите подписку в Telegram чтобы войти.',authChecking:'Проверяем авторизацию...',authWaiting:'Подтвердите подписку в Telegram и вернитесь сюда.',authSuccess:'Успешная авторизация',authSuccessShort:'Успешная авторизация',authFailed:'Ошибка авторизации. Попробуйте снова.',settings:'Настройки',logs:'Логи',language:'Язык',themeDark:'Тёмная тема',themeLight:'Светлая тема',howToUse:'Как использовать',tutorialTitle:'Как использовать',tutorialText:'Выберите ваше видео и нажмите кнопку "Patch", после чего вы можете опубликовать видео',logout:'Выйти',copy:'Копировать',export:'Экспорт',noLogs:'Логи появятся после действий в приложении.',patch:'Patch',upload:'Upload',dropTitle:'Выберите видео',dropHint:'Перетащите файл сюда или нажмите для выбора',selectFromGallery:'Выбрать из галереи',unsupportedPatchFormat:'Видео записано в неправильном контейнере mp4. Пожалуйста, перекодируйте его или зарендерите его через CapCut или другое удобное приложение',processedSaved:'Обработанное видео сохранено в галерее.',videoTooLarge:'Видео весит больше 165 МБ. Патчер не может принимать видео больше 165 МБ.',mediaAccessTitle:'Доступ к медиа',mediaAccessText:'Разрешите доступ ко всем видео, чтобы галерея показывала всю библиотеку.',performanceAuto:'Производительность: Авто',performanceQuality:'Производительность: Красиво',performanceLite:'Производительность: Слабый телефон',updateAvailable:'Вышла новая версия',updateText:'Доступна версия {version}. Установить обновление сейчас?',installUpdate:'Установить',later:'Позже',currentVersion:'Текущая версия',desktopUploadTitle:'Включите полную версию сайта',desktopUploadText:'Откроется Brave. Если Brave не установлен, откроется Google Play для установки. После открытия Brave следуйте скриншоту ниже.',desktopUploadStep1Title:'Скриншот-инструкция',desktopUploadStep1Text:'На скриншоте показано, какую кнопку меню нажать и какой пункт полной версии сайта выбрать.',desktopUploadStep2Title:'Шаг 2',desktopUploadStep2Text:'После переключения на полную версию сайта продолжите загрузку видео.',desktopUploadConfirm:'Понятно, открыть Brave',desktopUploadCancel:'Отмена'},
+  tr:{selectVideo:'Video seç',changeVideo:'Başka video seç',loaded:'Video yüklendi',noVideo:'Önce bir video seçin.',started:'Patch başladı',completed:'Patch tamamlandı',saved:'Dosya kaydedildi:',failed:'Patch başarısız',unsupported:'Yalnızca MP4 ve MOV videolar desteklenir.',authorize:'Yetkilendirme',authText:'Giriş yapmak için Telegram aboneliğini onaylayın.',authChecking:'Yetki kontrol ediliyor...',authWaiting:'Telegram aboneliğini onaylayın ve buraya dönün.',authSuccess:'Başarılı yetkilendirme',authSuccessShort:'Başarılı yetkilendirme',authFailed:'Yetkilendirme başarısız. Tekrar deneyin.',settings:'Ayarlar',logs:'Kayıtlar',language:'Dil',themeDark:'Koyu tema',themeLight:'Açık tema',howToUse:'Nasıl kullanılır',tutorialTitle:'Nasıl kullanılır',tutorialText:'Videonuzu seçin ve "Patch" düğmesine basın, ardından videoyu yayınlayabilirsiniz.',logout:'Çıkış yap',copy:'Kopyala',export:'Dışa aktar',noLogs:'Uygulama işlemlerinden sonra kayıtlar burada görünecek.',patch:'Patch',upload:'Upload',dropTitle:'Video seç',dropHint:'Dosyayı buraya sürükleyin veya seçmek için dokunun',selectFromGallery:'Galeriden seç',unsupportedPatchFormat:'Video yanlış MP4 konteynerinde kaydedilmiş. Lütfen CapCut veya başka uygun bir uygulama ile yeniden kodlayın ya da render alın.',processedSaved:'İşlenen video galeriye kaydedildi.',videoTooLarge:'Bu video 165 MB’den büyük. Patcher 165 MB’den büyük videoları kabul edemez.',mediaAccessTitle:'Medya erişimi',mediaAccessText:'Galerinin tüm video kitaplığını göstermesi için tüm videolara erişime izin verin.',performanceAuto:'Performans: Otomatik',performanceQuality:'Performans: Tam görsel',performanceLite:'Performans: Zayıf telefon',updateAvailable:'Yeni sürüm çıktı',updateText:'{version} sürümü mevcut. Güncellemeyi şimdi yükleyin.',installUpdate:'Yükle',later:'Sonra',currentVersion:'Geçerli sürüm',desktopUploadTitle:'Tam site sürümünü açın',desktopUploadText:'Brave açılacak. Brave yüklü değilse yüklemek için Google Play açılacak. Brave açıldıktan sonra aşağıdaki ekran görüntüsünü takip edin.',desktopUploadStep1Title:'Talimat ekran görüntüsü',desktopUploadStep1Text:'Ekran görüntüsünde hangi menü düğmesine dokunacağınız ve hangi tam site seçeneğini seçeceğiniz gösteriliyor.',desktopUploadStep2Title:'Adım 2',desktopUploadStep2Text:'Tam siteye geçtikten sonra video yüklemeye devam edin.',desktopUploadConfirm:'Brave’i aç',desktopUploadCancel:'İptal'}
 };
 
 const state = { settings:null, file:null, fileUrl:'', working:false, logs:[], filePickerActive:false, externalAuthActive:false };
@@ -27,6 +26,9 @@ let authPollActive = false;
 let authClickLockedUntil = 0;
 let authTapInProgress = false;
 let lastLifecycleResumeAt = 0;
+let authExternalOpenedAt = 0;
+const AUTH_STALE_MAX_MS = 10 * 60 * 1000;
+const AUTH_BUTTON_LOCK_MS = 600;
 const MAX_ACCEPTED_VIDEO_BYTES = 165 * 1024 * 1024;
 let fileInput;
 
@@ -158,110 +160,6 @@ function showInvalidMp4MovToast(fileName=''){
   toast(t('failed'), t('unsupportedPatchFormat'));
   log('error','unsupportedPatchFormat',fileName);
 }
-
-function processingWarningCopy(){
-  const lang=state.settings?.language || 'en';
-  if(lang==='ru'){
-    return {
-      title:'Предупреждение',
-      text:'Видео на слабых устройствах может обрабатываться дольше, чем обычно.',
-      cancel:'Отмена',
-      continue:'Продолжить',
-      dontShow:'Больше не показывать'
-    };
-  }
-  if(lang==='tr'){
-    return {
-      title:'Uyarı',
-      text:'Zayıf cihazlarda video işleme normalden daha uzun sürebilir.',
-      cancel:'İptal',
-      continue:'Devam et',
-      dontShow:'Bir daha gösterme'
-    };
-  }
-  return {
-    title:'Warning',
-    text:'On weaker devices, video processing may take longer than usual.',
-    cancel:'Cancel',
-    continue:'Continue',
-    dontShow:'Do not show again'
-  };
-}
-function processingWarningStorageKey(){
-  return `alter_processing_warning_hidden_${APP_VERSION || 'unknown'}`;
-}
-function shouldShowProcessingWarning(){
-  try{return localStorage.getItem(processingWarningStorageKey())!=='1';}catch(_){return true;}
-}
-function setProcessingWarningHidden(){
-  try{localStorage.setItem(processingWarningStorageKey(),'1');}catch(_){ }
-}
-function ensureProcessingWarningModal(){
-  let overlay=document.getElementById('processingWarningOverlay');
-  if(overlay) return overlay;
-  overlay=document.createElement('div');
-  overlay.id='processingWarningOverlay';
-  overlay.className='processing-warning-overlay';
-  overlay.hidden=true;
-  overlay.innerHTML=`<div class="processing-warning-card" role="dialog" aria-modal="true">
-    <div class="processing-warning-icon">!</div>
-    <h2 id="processingWarningTitle"></h2>
-    <p id="processingWarningText"></p>
-    <label class="processing-warning-check">
-      <input id="processingWarningDontShow" type="checkbox" />
-      <span id="processingWarningDontShowText"></span>
-    </label>
-    <div class="processing-warning-actions">
-      <button id="processingWarningCancel" type="button" class="processing-warning-cancel"></button>
-      <button id="processingWarningContinue" type="button" class="processing-warning-continue"></button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-  return overlay;
-}
-function askProcessingWarning(){
-  if(!shouldShowProcessingWarning()) return Promise.resolve(true);
-  const overlay=ensureProcessingWarningModal();
-  const copy=processingWarningCopy();
-  const title=overlay.querySelector('#processingWarningTitle');
-  const text=overlay.querySelector('#processingWarningText');
-  const dontShowText=overlay.querySelector('#processingWarningDontShowText');
-  const dontShow=overlay.querySelector('#processingWarningDontShow');
-  const cancel=overlay.querySelector('#processingWarningCancel');
-  const cont=overlay.querySelector('#processingWarningContinue');
-  if(title) title.textContent=copy.title;
-  if(text) text.textContent=copy.text;
-  if(dontShowText) dontShowText.textContent=copy.dontShow;
-  if(cancel) cancel.textContent=copy.cancel;
-  if(cont) cont.textContent=copy.continue;
-  if(dontShow) dontShow.checked=false;
-  overlay.hidden=false;
-  requestAnimationFrame(()=>overlay.classList.add('is-visible'));
-  return new Promise(resolve=>{
-    let done=false;
-    const close=(accepted)=>{
-      if(done) return;
-      done=true;
-      if(accepted && dontShow?.checked) setProcessingWarningHidden();
-      overlay.classList.remove('is-visible');
-      setTimeout(()=>{overlay.hidden=true;cleanup();resolve(Boolean(accepted));},260);
-    };
-    const onKey=e=>{if(e.key==='Escape') close(false);};
-    const onCancel=()=>close(false);
-    const onContinue=()=>close(true);
-    const onOverlay=e=>{if(e.target===overlay) close(false);};
-    const cleanup=()=>{
-      cancel?.removeEventListener('click',onCancel);
-      cont?.removeEventListener('click',onContinue);
-      overlay.removeEventListener('click',onOverlay);
-      document.removeEventListener('keydown',onKey);
-    };
-    cancel?.addEventListener('click',onCancel);
-    cont?.addEventListener('click',onContinue);
-    overlay.addEventListener('click',onOverlay);
-    document.addEventListener('keydown',onKey);
-  });
-}
 function resetFilePicker(){
   if(fileInput){
     try{fileInput.value='';}catch(_){fileInput.type='text';fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';}
@@ -294,13 +192,12 @@ async function openVideoPicker(){
   if(needsPermission){
     markExternalTransition('file',true);
     const result=await requestFullMediaAccess({force:true,silent:false});
-    // Native requestPermissions returns before the user fully finishes the system
-    // UI. Keep keep-alive for a grace window, then let the next tap open the gallery.
-    if(result==='requesting' || result==='denied' || result==='limited' || result==='unavailable') {
-      setTimeout(()=>markExternalTransition('file',false), 6500);
-      return;
-    }
     markExternalTransition('file',false);
+    try{ setTimeout(()=>window.alterE?.background?.stop?.('file-permission'),900); }catch(_){ }
+
+    // Native requestPermissions returns before the user fully finishes the system
+    // UI. Keep the action stable and let the next tap open the gallery.
+    if(result==='requesting' || result==='denied' || result==='limited' || result==='unavailable') return;
   }
 
   markExternalTransition('file',true);
@@ -403,15 +300,22 @@ function readUiSnapshot(){
   try{return JSON.parse(sessionStorage.getItem('alter_ui_snapshot')||localStorage.getItem('alter_ui_snapshot')||'{}')||{};}catch(_){return {};}
 }
 function markExternalTransition(kind,active=true){
-  if(kind==='file') state.filePickerActive=active;
-  if(kind==='auth') state.externalAuthActive=active;
+  const normalizedKind = kind === 'external' ? 'auth' : (kind || 'external');
+  if(normalizedKind==='file') state.filePickerActive=active;
+  if(normalizedKind==='auth') state.externalAuthActive=active;
   document.body.classList.toggle('is-external-transition', Boolean(active));
+
   try{
     if(active){
-      window.alterE?.background?.start?.(kind||'external');
+      window.alterE?.background?.start?.(normalizedKind);
     }else{
-      const delay = kind==='auth' ? 4200 : (kind==='file' ? 2600 : 900);
-      setTimeout(()=>window.alterE?.background?.stop?.(kind||'external'), delay);
+      // On weak Android devices the app can be recreated right after Telegram/gallery.
+      // Do not stop keep-alive while authorization is still pending.
+      const keepAuthAlive = normalizedKind === 'auth' && authSessionIsFresh(state.settings) && !state.settings?.authorized;
+      if(!keepAuthAlive){
+        const delay = normalizedKind === 'file' ? 6500 : 2200;
+        setTimeout(()=>window.alterE?.background?.stop?.(normalizedKind), delay);
+      }
     }
   }catch(_){ }
   saveUiSnapshot();
@@ -465,14 +369,15 @@ async function cyclePerformanceMode(){
 function nowMs(){return Date.now ? Date.now() : new Date().getTime();}
 function authSessionIsFresh(settings){
   const started=Number(settings?.pendingAuthStartedAt || settings?.authStartedAt || 0);
-  return Boolean(settings?.pendingAuthToken && started && (nowMs()-started)<AUTH_POLL_MAX_MS);
+  return Boolean(settings?.pendingAuthToken && started && (nowMs()-started)<AUTH_STALE_MAX_MS);
 }
 async function clearPendingAuth(extra={}){
-  state.settings=await window.alterE.settings.update({pendingAuthToken:'',pendingAuthUrl:'',pendingAuthStartedAt:0,authInProgress:false,...extra});
+  state.settings=await window.alterE.settings.update({pendingAuthToken:'',pendingAuthUrl:'',pendingAuthStartedAt:0,authStartedAt:0,authInProgress:false,...extra});
   return state.settings;
 }
 async function savePendingAuth(token,url){
-  state.settings=await window.alterE.settings.update({pendingAuthToken:token,pendingAuthUrl:url||'',pendingAuthStartedAt:nowMs(),authInProgress:true});
+  const ts=nowMs();
+  state.settings=await window.alterE.settings.update({pendingAuthToken:token,pendingAuthUrl:url||'',pendingAuthStartedAt:ts,authStartedAt:ts,authInProgress:true});
   return state.settings;
 }
 async function completeAuthorization(token){
@@ -480,7 +385,7 @@ async function completeAuthorization(token){
   state.logs=[];
   state.externalAuthActive=false;
   document.body.classList.remove('is-external-transition');
-  try{ setTimeout(()=>window.alterE?.background?.stop?.('auth-complete'),4200); }catch(_){ }
+  try{ setTimeout(()=>window.alterE?.background?.stop?.('auth'),900); }catch(_){ }
   log('success','authSuccessShort','');
   toast(t('authSuccessShort'));
   applyText();
@@ -488,47 +393,54 @@ async function completeAuthorization(token){
   saveUiSnapshot();
 }
 async function pollAuthorization(token,{silent=false}={}){
-  if(!token || authPollActive) return false;
+  if(!token) return false;
+  if(authPollActive) return false;
   authPollActive=true;
-  let completed=false;
   const b=$('authButton');
-  if(b) b.disabled=true;
+
+  // Never keep the auth button disabled during polling. On weak devices a suspended
+  // WebView can keep the disabled DOM state after returning from Telegram.
+  resetAuthButtonState();
   if(!silent && $('authText')) $('authText').textContent=t('authWaiting');
+
   try{
-    const started=nowMs();
-    while(nowMs()-started < AUTH_POLL_MAX_MS){
+    const started=Number(state.settings?.pendingAuthStartedAt || state.settings?.authStartedAt || nowMs());
+    while(nowMs()-started < AUTH_STALE_MAX_MS){
       const fresh=await window.alterE.settings.get().catch(()=>state.settings);
-      if(fresh?.authorized) {
-        completed=true;
-        state.settings=fresh;
-        markExternalTransition('auth', false);
+      state.settings=fresh || state.settings;
+
+      if(state.settings?.authorized){
+        state.externalAuthActive=false;
+        document.body.classList.remove('is-external-transition');
         renderAuth();
         saveUiSnapshot();
+        try{ setTimeout(()=>window.alterE?.background?.stop?.('auth'),1800); }catch(_){ }
         return true;
       }
-      if(!fresh?.pendingAuthToken && token!==fresh?.authToken) return false;
+
+      if(!state.settings?.pendingAuthToken && token!==state.settings?.authToken) return false;
+
       const st=await window.alterE.auth.status(token).catch(()=>null);
       if(isServerAuthorized(st)){
-        completed=true;
         await completeAuthorization(token);
         return true;
       }
+
+      resetAuthButtonState();
       await new Promise(r=>setTimeout(r,AUTH_POLL_INTERVAL_MS));
     }
     return false;
   }finally{
     authPollActive=false;
-    if(b) b.disabled=false;
-    if(!completed){
-      markExternalTransition('auth', false);
-      saveUiSnapshotSoon?.();
-    }
+    resetAuthButtonState();
   }
 }
 async function resumeAppState(){
   const stamp=nowMs();
-  if(stamp-lastLifecycleResumeAt<800) return;
+  const authPendingBefore = authSessionIsFresh(state.settings) && !state.settings?.authorized;
+  if(!authPendingBefore && stamp-lastLifecycleResumeAt<800) return;
   lastLifecycleResumeAt=stamp;
+
   state.settings=await window.alterE.settings.get().catch(()=>state.settings);
   PERF.nativeProfile=await window.alterE?.performance?.profile?.().catch(()=>PERF.nativeProfile) || PERF.nativeProfile;
   document.body.dataset.theme=state.settings?.theme||'dark';
@@ -538,17 +450,24 @@ async function resumeAppState(){
   renderAuth();
   setTimeout(()=>checkAppUpdateSoon({force:true}), 700);
   if(state.file) renderVideo();
-  setTimeout(()=>{
+
+  setTimeout(()=>{ 
     if(state.filePickerActive){
-      markExternalTransition('file', false);
+      state.filePickerActive=false;
+      document.body.classList.remove('is-external-transition');
       saveUiSnapshotSoon();
+      try{ window.alterE?.background?.stop?.('file'); }catch(_){ }
     }
-  },1200);
+  },3500);
+
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){
     if($('authText')) $('authText').textContent=t('authWaiting');
+    markExternalTransition('auth', true);
     pollAuthorization(state.settings.pendingAuthToken,{silent:true});
   }else{
-    try{ setTimeout(()=>window.alterE?.background?.stop?.('resume'),4200); }catch(_){ }
+    state.externalAuthActive=false;
+    document.body.classList.remove('is-external-transition');
+    try{ setTimeout(()=>window.alterE?.background?.stop?.('resume'),2200); }catch(_){ }
   }
 }
 function bindLifecycleResume(){
@@ -564,9 +483,13 @@ function bindLifecycleResume(){
     else saveUiSnapshotSoon();
   },{passive:true});
   window.addEventListener('blur',()=>{ if(document.hidden) setVisualPaused(true); },{passive:true});
-  window.addEventListener('focus',()=>{ setVisualPaused(false); resumeAppState(); },{passive:true});
+  window.addEventListener('focus',()=>{ setVisualPaused(false); resetAuthButtonState(); resumeAppState(); },{passive:true});
   window.addEventListener('pagehide',()=>{ setVisualPaused(true); saveUiSnapshotSoon(); },{passive:true});
-  window.addEventListener('pageshow',()=>{ setVisualPaused(false); resumeAppState(); },{passive:true});
+  window.addEventListener('pageshow',()=>{ setVisualPaused(false); resetAuthButtonState(); resumeAppState(); },{passive:true});
+
+  // Some Android WebViews do not fire focus/pageshow reliably after Telegram.
+  document.addEventListener('resume',()=>{ resetAuthButtonState(); resumeAppState(); },{passive:true});
+  document.addEventListener('pause',()=>{ saveUiSnapshotSoon(); },{passive:true});
 }
 
 function formatUpdateText(template, info){
@@ -625,19 +548,11 @@ async function init(){
   applyPerformanceProfile();
   particles();
   fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';fileInput.hidden=true;document.body.appendChild(fileInput);
-  fileInput.addEventListener('change',()=>{
-    const f=fileInput.files?.[0];
-    if(f){
-      handleFile(f).finally(()=>markExternalTransition('file',false));
-    }else{
-      markExternalTransition('file',false);
-      saveUiSnapshotSoon();
-    }
-  });
-  bind();bindLifecycleResume();applyText();await validateStoredAuthorization();renderAuth();renderVideo();renderLogs();
+  fileInput.addEventListener('change',()=>{const f=fileInput.files?.[0];markExternalTransition('file',false);if(f)handleFile(f);else saveUiSnapshotSoon();});
+  bind();bindAuthOverlaySafety();bindLifecycleResume();applyText();await validateStoredAuthorization();renderAuth();renderVideo();renderLogs();
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){pollAuthorization(state.settings.pendingAuthToken,{silent:true});}
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
-  if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),4200); }catch(_){ } }
+  if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
   setTimeout(()=>checkAppUpdateSoon({force:true}), 1800);
 }
 
@@ -827,7 +742,10 @@ async function clearStaleAuthProgress(){
   const started = Number(state.settings?.pendingAuthStartedAt || state.settings?.authStartedAt || 0);
   const pending = state.settings?.pendingAuthToken || '';
   if(!pending && !state.settings?.authInProgress) { resetAuthButtonState(); return; }
-  if(!started || Date.now() - started > AUTH_POLL_MAX_MS){
+
+  // Do not expire Telegram auth after 90 seconds on weak devices. Users can spend
+  // several minutes in Telegram before Android returns the WebView.
+  if(!started || Date.now() - started > AUTH_STALE_MAX_MS){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
@@ -849,7 +767,13 @@ async function validateStoredAuthorization(){
   }
 }
 
-function renderAuth(){const locked=!state.settings?.authorized;$('authOverlay').hidden=!locked;document.body.classList.toggle('is-auth-locked',locked);resetAuthButtonState();}
+function renderAuth(){
+  const locked=!state.settings?.authorized;
+  const overlay=$('authOverlay');
+  if(overlay) overlay.hidden=!locked;
+  document.body.classList.toggle('is-auth-locked',locked);
+  resetAuthButtonState();
+}
 
 function resetPreviewElement(v){
   if(!v)return;
@@ -944,18 +868,6 @@ async function handleFile(file){
   if(isVideoTooLarge(file)){showTooLargeToast();log('error','videoTooLarge',file.name);resetFilePicker();markExternalTransition('file',false);return}
   const validContainer = await hasValidMp4MovStructure(file).catch(()=>false);
   if(!validContainer){showInvalidMp4MovToast(file.name);resetFilePicker();markExternalTransition('file',false);return}
-  const accepted = await askProcessingWarning();
-  if(!accepted){
-    try{ window.alterMobile?.clearSelectedFile?.(); }catch(_){ }
-    state.file=null;
-    state.fileUrl='';
-    resetFilePicker();
-    markExternalTransition('file',false);
-    renderVideo();
-    saveUiSnapshot();
-    log('info','cancel','video selection cancelled');
-    return;
-  }
   state.file=file;
   state.fileUrl=window.alterMobile.setSelectedFile(file);
   resetFilePicker();
@@ -964,82 +876,6 @@ async function handleFile(file){
   log('info','loaded',file.name);
   toast(t('loaded'),file.name);
 }
-
-function bytesToBase64(bytes){
-  let binary='';
-  const step=0x8000;
-  for(let i=0;i<bytes.length;i+=step){
-    binary+=String.fromCharCode.apply(null, bytes.subarray(i,i+step));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(base64){
-  const binary=atob(base64);
-  const bytes=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-  return bytes;
-}
-
-async function transcodeSelectedVideoToH264(file){
-  const bridge=window.AlterTranscode;
-  if(!bridge || typeof bridge.beginTranscode!=='function'){
-    throw new Error('HEVC fallback is not available in this APK.');
-  }
-
-  const token=bridge.beginTranscode(file.name || 'input.mp4', file.type || 'video/mp4');
-  if(!token || String(token).startsWith('ERROR:')) throw new Error(String(token || 'transcode_begin_failed'));
-
-  const inputChunkSize=128 * 1024;
-  try{
-    for(let offset=0; offset<file.size; offset+=inputChunkSize){
-      const slice=file.slice(offset, Math.min(file.size, offset + inputChunkSize));
-      const bytes=new Uint8Array(await slice.arrayBuffer());
-      const res=bridge.appendInputChunk(token, bytesToBase64(bytes));
-      if(res !== 'OK') throw new Error(String(res || 'transcode_append_failed'));
-      const progress=Math.min(35, Math.round((offset / Math.max(1,file.size)) * 35));
-      window.alterE?.video?.onProgress?.(()=>{});
-      $('patchProgress')?.style.setProperty('--progress',`${progress}%`);
-    }
-
-    toast(t('started'), 'HEVC/H.265 → H.264...');
-    log('info','started','HEVC/H.265 → H.264');
-    const finish=bridge.finishTranscode(token);
-    if(finish !== 'OK') throw new Error(String(finish || 'transcode_failed'));
-
-    const total=Number(bridge.getResultSize(token) || 0);
-    if(!total) throw new Error('empty_transcode_output');
-
-    const outputChunks=[];
-    const outputChunkSize=128 * 1024;
-    for(let offset=0; offset<total; offset+=outputChunkSize){
-      const b64=bridge.readResultChunk(token, offset, outputChunkSize);
-      if(String(b64).startsWith('ERROR:')) throw new Error(String(b64));
-      if(!b64) break;
-      outputChunks.push(base64ToBytes(b64));
-      const progress=35 + Math.min(40, Math.round((offset / Math.max(1,total)) * 40));
-      $('patchProgress')?.style.setProperty('--progress',`${progress}%`);
-    }
-
-    const outName=(file.name || 'video.mp4').replace(/\.(mov|mp4)$/i,'') + '_h264.mp4';
-    return new File(outputChunks, outName, {type:'video/mp4'});
-  } finally {
-    try{ bridge.releaseResult(token); }catch(_){}
-  }
-}
-
-function isV5H264OnlyError(error){
-  const raw=String(error?.message || error || '');
-  return /V5 supports only H\.264\/AVC|supports only H\.264|H\.265|HEVC|h265|hevc/i.test(raw);
-}
-
-async function runPatchWithHevcFallback(){
-  // Codec fallback is handled inside mobile-bridge.js exactly once.
-  // Keeping fallback here caused repeated _h264_h264 renders and stale-file patching.
-  return await window.alterE.video.patch({});
-}
-
-
 async function patch(){
   if(state.working)return;
   if(!state.file){toast(t('noVideo'));return}
@@ -1053,9 +889,9 @@ async function patch(){
     $('patchButton').classList.add('is-working');
     log('info','started',state.file.name);
     toast(t('started'));
-    const r=await runPatchWithHevcFallback();
+    const r=await window.alterE.video.patch({});
     toast(t('completed'),t('processedSaved'));
-    log('success','saved',r?.outputPath || '');
+    log('success','saved',r.outputPath);
   }catch(e){
     const raw=String(e?.message||e);
     const m=/not supported for patching|format is not supported|invalid mp4|moov|mdat|ftyp|container/i.test(raw)?t('unsupportedPatchFormat'):raw;
@@ -1071,52 +907,67 @@ async function patch(){
 }
 async function authorize(){
   const stamp = Date.now();
-  if(authTapInProgress && stamp < authClickLockedUntil) return;
+  if(authTapInProgress && stamp < authClickLockedUntil) {
+    resetAuthButtonState();
+    return;
+  }
   authTapInProgress = true;
-  authClickLockedUntil = stamp + 1600;
+  authClickLockedUntil = stamp + AUTH_BUTTON_LOCK_MS;
   resetAuthButtonState();
 
   try{
     toast(t('authChecking'), '');
 
     // Always create a fresh Telegram auth session on manual tap.
-    // This prevents a stale pending session from blocking the button.
     const session = await window.alterE.auth.createSession();
     const token = session?.session_token || session?.token || '';
     const telegramUrl = session?.auth_url || session?.telegram_url || session?.url || '';
 
     if(!token || !telegramUrl) throw new Error('auth_session_not_created');
 
+    const ts=Date.now();
     state.settings = await window.alterE.settings.update({
       authorized:false,
       authToken:'',
       pendingAuthToken:token,
-      pendingAuthStartedAt:Date.now(),
+      pendingAuthUrl:telegramUrl,
+      pendingAuthStartedAt:ts,
       authInProgress:true,
-      authStartedAt:Date.now()
+      authStartedAt:ts
     });
 
     saveUiSnapshotSoon?.();
-    // Keep the foreground service alive while Telegram is open and while auth polling runs.
-    // Older Samsung/Android builds can kill or recreate WebView if we stop this too early.
     markExternalTransition('auth', true);
-    await window.alterE.shell.openExternal(telegramUrl);
+    authExternalOpenedAt=Date.now();
+
+    let opened=false;
+    try{
+      opened = await window.alterE.shell.openExternal(telegramUrl);
+    }catch(_){
+      opened=false;
+    }
+
+    // Fallback for weak WebView/native shell failures.
+    if(opened === false || opened === 'ERROR'){
+      try{ window.location.href = telegramUrl; }catch(_){ }
+    }
 
     toast(t('authWaiting'), '');
     pollAuthorization(token, {silent:true});
   }catch(e){
     resetAuthButtonState();
-    markExternalTransition('auth', false);
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
+      pendingAuthUrl:'',
       pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();
+    markExternalTransition('auth', false);
     toast(t('authFailed'), String(e?.message || e || ''));
   }finally{
-    setTimeout(()=>{ authTapInProgress = false; resetAuthButtonState(); }, 500);
+    setTimeout(()=>{ authTapInProgress = false; resetAuthButtonState(); }, 350);
   }
 }
 async function switchLanguage(){const o=['en','ru','tr'];const n=o[(o.indexOf(state.settings.language)+1)%o.length];state.settings=await window.alterE.settings.update({language:n});applyText()}
