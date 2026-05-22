@@ -51,6 +51,7 @@ manifest = ensurePermission(manifest, '<uses-permission android:name="android.pe
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />');
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />');
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />');
+manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.WAKE_LOCK" />');
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />');
 
 manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
@@ -532,8 +533,9 @@ public class KeepAliveService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        stopForegroundCompat();
-        stopSelf();
+        // On weak Android devices Telegram/gallery can make the task look removed
+        // for a moment. Keep the foreground service alive; JS will stop it after
+        // auth/file flow completes.
         super.onTaskRemoved(rootIntent);
     }
 
