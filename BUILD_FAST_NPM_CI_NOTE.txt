@@ -1,0 +1,1 @@
+GitHub Actions install step changed from pnpm install to npm ci --prefer-offline --no-audit --no-fund with npm cache.
