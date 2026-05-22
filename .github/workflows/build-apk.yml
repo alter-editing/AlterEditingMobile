@@ -71,7 +71,7 @@ jobs:
       - name: Install deps
         run: |
           npm install -g pnpm@8
-          pnpm install --frozen-lockfile
+          pnpm install
 
       - name: Build web
         shell: bash
