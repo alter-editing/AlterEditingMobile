@@ -1,1 +1,1 @@
-GitHub Actions install step changed from pnpm install to npm ci --prefer-offline --no-audit --no-fund with npm cache.
+Install deps now uses only npm ci --no-audit --no-fund. Removed npx vite --version and npx cap --version to avoid slow npx package resolution in GitHub Actions.
