@@ -71,6 +71,7 @@ manifest = ensurePermission(manifest, '<uses-permission android:name="android.pe
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />');
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />');
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />');
+manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.WAKE_LOCK" />');
 manifest = ensurePermission(manifest, '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />');
 
 manifest = manifest.replace(/<application\b([^>]*)>/, (match, attrs) => {
@@ -533,12 +534,14 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 
 public class KeepAliveService extends Service {
     public static final String ACTION_START = "${packageName}.KEEP_ALIVE_START";
     public static final String ACTION_STOP = "${packageName}.KEEP_ALIVE_STOP";
     private static final String CHANNEL_ID = "alter_keep_alive";
     private static final int NOTIFICATION_ID = 4207;
+    private PowerManager.WakeLock wakeLock;
 
     @Override
     public void onCreate() {
@@ -550,11 +553,13 @@ public class KeepAliveService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_STOP.equals(action)) {
+            releaseWakeLock();
             stopForegroundCompat();
             stopSelf();
             return START_NOT_STICKY;
         }
         startForegroundCompat(buildNotification());
+        acquireWakeLock();
         return START_STICKY;
     }
 
@@ -569,6 +574,31 @@ public class KeepAliveService extends Service {
         // temporarily removes the task while external apps/pickers are active.
         // It is stopped explicitly from JS when the app returns or the operation ends.
         super.onTaskRemoved(rootIntent);
+    }
+
+
+    @Override
+    public void onDestroy() {
+        releaseWakeLock();
+        super.onDestroy();
+    }
+
+    private void acquireWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) return;
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm == null) return;
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getPackageName() + ":AlterKeepAlive");
+            wakeLock.setReferenceCounted(false);
+            wakeLock.acquire(10 * 60 * 1000L);
+        } catch (Throwable ignored) {}
+    }
+
+    private void releaseWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        } catch (Throwable ignored) {}
+        wakeLock = null;
     }
 
     private void createChannel() {

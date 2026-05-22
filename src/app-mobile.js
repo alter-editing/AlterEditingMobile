@@ -1,3 +1,4 @@
+import { APP_VERSION } from './app-version.js';
 const $ = id => document.getElementById(id);
 
 const i18n = {
@@ -157,6 +158,110 @@ function showInvalidMp4MovToast(fileName=''){
   toast(t('failed'), t('unsupportedPatchFormat'));
   log('error','unsupportedPatchFormat',fileName);
 }
+
+function processingWarningCopy(){
+  const lang=state.settings?.language || 'en';
+  if(lang==='ru'){
+    return {
+      title:'Предупреждение',
+      text:'Видео на слабых устройствах может обрабатываться дольше, чем обычно.',
+      cancel:'Отмена',
+      continue:'Продолжить',
+      dontShow:'Больше не показывать'
+    };
+  }
+  if(lang==='tr'){
+    return {
+      title:'Uyarı',
+      text:'Zayıf cihazlarda video işleme normalden daha uzun sürebilir.',
+      cancel:'İptal',
+      continue:'Devam et',
+      dontShow:'Bir daha gösterme'
+    };
+  }
+  return {
+    title:'Warning',
+    text:'On weaker devices, video processing may take longer than usual.',
+    cancel:'Cancel',
+    continue:'Continue',
+    dontShow:'Do not show again'
+  };
+}
+function processingWarningStorageKey(){
+  return `alter_processing_warning_hidden_${APP_VERSION || 'unknown'}`;
+}
+function shouldShowProcessingWarning(){
+  try{return localStorage.getItem(processingWarningStorageKey())!=='1';}catch(_){return true;}
+}
+function setProcessingWarningHidden(){
+  try{localStorage.setItem(processingWarningStorageKey(),'1');}catch(_){ }
+}
+function ensureProcessingWarningModal(){
+  let overlay=document.getElementById('processingWarningOverlay');
+  if(overlay) return overlay;
+  overlay=document.createElement('div');
+  overlay.id='processingWarningOverlay';
+  overlay.className='processing-warning-overlay';
+  overlay.hidden=true;
+  overlay.innerHTML=`<div class="processing-warning-card" role="dialog" aria-modal="true">
+    <div class="processing-warning-icon">!</div>
+    <h2 id="processingWarningTitle"></h2>
+    <p id="processingWarningText"></p>
+    <label class="processing-warning-check">
+      <input id="processingWarningDontShow" type="checkbox" />
+      <span id="processingWarningDontShowText"></span>
+    </label>
+    <div class="processing-warning-actions">
+      <button id="processingWarningCancel" type="button" class="processing-warning-cancel"></button>
+      <button id="processingWarningContinue" type="button" class="processing-warning-continue"></button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+function askProcessingWarning(){
+  if(!shouldShowProcessingWarning()) return Promise.resolve(true);
+  const overlay=ensureProcessingWarningModal();
+  const copy=processingWarningCopy();
+  const title=overlay.querySelector('#processingWarningTitle');
+  const text=overlay.querySelector('#processingWarningText');
+  const dontShowText=overlay.querySelector('#processingWarningDontShowText');
+  const dontShow=overlay.querySelector('#processingWarningDontShow');
+  const cancel=overlay.querySelector('#processingWarningCancel');
+  const cont=overlay.querySelector('#processingWarningContinue');
+  if(title) title.textContent=copy.title;
+  if(text) text.textContent=copy.text;
+  if(dontShowText) dontShowText.textContent=copy.dontShow;
+  if(cancel) cancel.textContent=copy.cancel;
+  if(cont) cont.textContent=copy.continue;
+  if(dontShow) dontShow.checked=false;
+  overlay.hidden=false;
+  requestAnimationFrame(()=>overlay.classList.add('is-visible'));
+  return new Promise(resolve=>{
+    let done=false;
+    const close=(accepted)=>{
+      if(done) return;
+      done=true;
+      if(accepted && dontShow?.checked) setProcessingWarningHidden();
+      overlay.classList.remove('is-visible');
+      setTimeout(()=>{overlay.hidden=true;cleanup();resolve(Boolean(accepted));},260);
+    };
+    const onKey=e=>{if(e.key==='Escape') close(false);};
+    const onCancel=()=>close(false);
+    const onContinue=()=>close(true);
+    const onOverlay=e=>{if(e.target===overlay) close(false);};
+    const cleanup=()=>{
+      cancel?.removeEventListener('click',onCancel);
+      cont?.removeEventListener('click',onContinue);
+      overlay.removeEventListener('click',onOverlay);
+      document.removeEventListener('keydown',onKey);
+    };
+    cancel?.addEventListener('click',onCancel);
+    cont?.addEventListener('click',onContinue);
+    overlay.addEventListener('click',onOverlay);
+    document.addEventListener('keydown',onKey);
+  });
+}
 function resetFilePicker(){
   if(fileInput){
     try{fileInput.value='';}catch(_){fileInput.type='text';fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';}
@@ -189,12 +294,13 @@ async function openVideoPicker(){
   if(needsPermission){
     markExternalTransition('file',true);
     const result=await requestFullMediaAccess({force:true,silent:false});
-    markExternalTransition('file',false);
-    try{ setTimeout(()=>window.alterE?.background?.stop?.('file-permission'),900); }catch(_){ }
-
     // Native requestPermissions returns before the user fully finishes the system
-    // UI. Keep the action stable and let the next tap open the gallery.
-    if(result==='requesting' || result==='denied' || result==='limited' || result==='unavailable') return;
+    // UI. Keep keep-alive for a grace window, then let the next tap open the gallery.
+    if(result==='requesting' || result==='denied' || result==='limited' || result==='unavailable') {
+      setTimeout(()=>markExternalTransition('file',false), 6500);
+      return;
+    }
+    markExternalTransition('file',false);
   }
 
   markExternalTransition('file',true);
@@ -301,8 +407,12 @@ function markExternalTransition(kind,active=true){
   if(kind==='auth') state.externalAuthActive=active;
   document.body.classList.toggle('is-external-transition', Boolean(active));
   try{
-    if(active) window.alterE?.background?.start?.(kind||'external');
-    else setTimeout(()=>window.alterE?.background?.stop?.(kind||'external'), kind==='auth'?1800:700);
+    if(active){
+      window.alterE?.background?.start?.(kind||'external');
+    }else{
+      const delay = kind==='auth' ? 4200 : (kind==='file' ? 2600 : 900);
+      setTimeout(()=>window.alterE?.background?.stop?.(kind||'external'), delay);
+    }
   }catch(_){ }
   saveUiSnapshot();
 }
@@ -354,7 +464,7 @@ async function cyclePerformanceMode(){
 
 function nowMs(){return Date.now ? Date.now() : new Date().getTime();}
 function authSessionIsFresh(settings){
-  const started=Number(settings?.pendingAuthStartedAt||0);
+  const started=Number(settings?.pendingAuthStartedAt || settings?.authStartedAt || 0);
   return Boolean(settings?.pendingAuthToken && started && (nowMs()-started)<AUTH_POLL_MAX_MS);
 }
 async function clearPendingAuth(extra={}){
@@ -370,7 +480,7 @@ async function completeAuthorization(token){
   state.logs=[];
   state.externalAuthActive=false;
   document.body.classList.remove('is-external-transition');
-  try{ setTimeout(()=>window.alterE?.background?.stop?.('auth'),900); }catch(_){ }
+  try{ setTimeout(()=>window.alterE?.background?.stop?.('auth-complete'),4200); }catch(_){ }
   log('success','authSuccessShort','');
   toast(t('authSuccessShort'));
   applyText();
@@ -438,7 +548,7 @@ async function resumeAppState(){
     if($('authText')) $('authText').textContent=t('authWaiting');
     pollAuthorization(state.settings.pendingAuthToken,{silent:true});
   }else{
-    try{ setTimeout(()=>window.alterE?.background?.stop?.('resume'),1200); }catch(_){ }
+    try{ setTimeout(()=>window.alterE?.background?.stop?.('resume'),4200); }catch(_){ }
   }
 }
 function bindLifecycleResume(){
@@ -515,11 +625,19 @@ async function init(){
   applyPerformanceProfile();
   particles();
   fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='video/mp4,video/quicktime,.mp4,.mov';fileInput.hidden=true;document.body.appendChild(fileInput);
-  fileInput.addEventListener('change',()=>{const f=fileInput.files?.[0];markExternalTransition('file',false);if(f)handleFile(f);else saveUiSnapshotSoon();});
+  fileInput.addEventListener('change',()=>{
+    const f=fileInput.files?.[0];
+    if(f){
+      handleFile(f).finally(()=>markExternalTransition('file',false));
+    }else{
+      markExternalTransition('file',false);
+      saveUiSnapshotSoon();
+    }
+  });
   bind();bindLifecycleResume();applyText();await validateStoredAuthorization();renderAuth();renderVideo();renderLogs();
   if(authSessionIsFresh(state.settings) && !state.settings.authorized){pollAuthorization(state.settings.pendingAuthToken,{silent:true});}
   setTimeout(()=>{$('bootScreen')?.classList.add('is-hiding');document.body.classList.remove('is-booting')},450);
-  if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),1600); }catch(_){ } }
+  if(!authSessionIsFresh(state.settings)){ try{ setTimeout(()=>window.alterE?.background?.stop?.('init'),4200); }catch(_){ } }
   setTimeout(()=>checkAppUpdateSoon({force:true}), 1800);
 }
 
@@ -706,13 +824,14 @@ function applyText(){
 
 
 async function clearStaleAuthProgress(){
-  const started = Number(state.settings?.authStartedAt || 0);
+  const started = Number(state.settings?.pendingAuthStartedAt || state.settings?.authStartedAt || 0);
   const pending = state.settings?.pendingAuthToken || '';
   if(!pending && !state.settings?.authInProgress) { resetAuthButtonState(); return; }
-  if(!started || Date.now() - started > 90 * 1000){
+  if(!started || Date.now() - started > AUTH_POLL_MAX_MS){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
+      pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();
@@ -825,6 +944,18 @@ async function handleFile(file){
   if(isVideoTooLarge(file)){showTooLargeToast();log('error','videoTooLarge',file.name);resetFilePicker();markExternalTransition('file',false);return}
   const validContainer = await hasValidMp4MovStructure(file).catch(()=>false);
   if(!validContainer){showInvalidMp4MovToast(file.name);resetFilePicker();markExternalTransition('file',false);return}
+  const accepted = await askProcessingWarning();
+  if(!accepted){
+    try{ window.alterMobile?.clearSelectedFile?.(); }catch(_){ }
+    state.file=null;
+    state.fileUrl='';
+    resetFilePicker();
+    markExternalTransition('file',false);
+    renderVideo();
+    saveUiSnapshot();
+    log('info','cancel','video selection cancelled');
+    return;
+  }
   state.file=file;
   state.fileUrl=window.alterMobile.setSelectedFile(file);
   resetFilePicker();
@@ -960,6 +1091,7 @@ async function authorize(){
       authorized:false,
       authToken:'',
       pendingAuthToken:token,
+      pendingAuthStartedAt:Date.now(),
       authInProgress:true,
       authStartedAt:Date.now()
     });
@@ -978,6 +1110,7 @@ async function authorize(){
     state.settings = await window.alterE.settings.update({
       authInProgress:false,
       pendingAuthToken:'',
+      pendingAuthStartedAt:0,
       authStartedAt:0
     }).catch(()=>state.settings);
     saveUiSnapshotSoon?.();
