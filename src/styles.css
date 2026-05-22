@@ -1176,21 +1176,30 @@ body[data-theme='light'] .desktop-upload-step-image{border-color:rgba(18,26,36,.
 /* === Processing warning before accepting a selected video === */
 .processing-warning-overlay{
   position:fixed;
-  inset:0;
+  left:0;
+  top:0;
+  width:100vw;
+  height:100vh;
+  height:100dvh;
   z-index:95;
-  display:grid;
-  place-items:center;
-  padding:22px;
+  display:block;
+  padding:0;
   background:rgba(0,0,0,.38);
   backdrop-filter:blur(12px);
   opacity:0;
   visibility:hidden;
   transition:opacity .24s ease, visibility .24s ease;
+  overflow:hidden;
 }
 .processing-warning-overlay[hidden]{display:none!important;}
 .processing-warning-overlay.is-visible{opacity:1;visibility:visible;}
 .processing-warning-card{
-  width:min(92vw,390px);
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(calc(100vw - 44px),390px);
+  max-height:calc(100dvh - 44px);
+  overflow:auto;
   border-radius:28px;
   border:1px solid var(--line);
   background:linear-gradient(145deg,rgba(15,21,28,.96),rgba(5,8,12,.985));
@@ -1200,11 +1209,11 @@ body[data-theme='light'] .desktop-upload-step-image{border-color:rgba(18,26,36,.
   justify-items:center;
   gap:13px;
   text-align:center;
-  transform:translateY(16px) scale(.96);
+  transform:translate(-50%,-50%) translateY(16px) scale(.96);
   opacity:0;
   transition:transform .26s cubic-bezier(.2,.8,.2,1), opacity .24s ease;
 }
-.processing-warning-overlay.is-visible .processing-warning-card{transform:translateY(0) scale(1);opacity:1;}
+.processing-warning-overlay.is-visible .processing-warning-card{transform:translate(-50%,-50%) translateY(0) scale(1);opacity:1;}
 .processing-warning-icon{
   width:48px;
   height:48px;
