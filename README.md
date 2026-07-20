@@ -1,44 +1,44 @@
 # Alter Editing Method Mobile
 
-Публичный репозиторий с релизами Android-приложения Alter Editing Method.
+Public repository for Android releases of Alter Editing Method.
 
-В этом репозитории размещаются только:
-- APK-файлы приложения
-- файлы обновления для автообновления
+This repository contains only:
+- APK builds
+- update files for the in-app updater
 
-Исходный код здесь не публикуется.
+The source code is not published here.
 
-## Скачать последнюю версию
+## Download the Latest Version
 
-Актуальный релиз:
+Latest release:
 
-[Открыть Latest Release](https://github.com/alter-editing/AlterEditingMobile/releases/latest)
+[Open Latest Release](https://github.com/alter-editing/AlterEditingMobile/releases/latest)
 
-## Как установить
+## Installation
 
-1. Откройте раздел `Releases`.
-2. Скачайте последний `.apk` файл.
-3. Откройте его на Android-устройстве.
-4. Если Android запросит разрешение, подтвердите установку из этого источника.
-5. Дождитесь завершения установки.
+1. Open the `Releases` section.
+2. Download the latest `.apk` file.
+3. Open it on your Android device.
+4. If Android asks for permission, allow installation from this source.
+5. Wait until the installation is complete.
 
-## Как обновить приложение
+## How to Update
 
-1. Если внутри приложения появилось уведомление о новой версии, подтвердите обновление.
-2. Если автообновление недоступно, скачайте новую версию вручную из `Releases`.
-3. Установите новый APK поверх предыдущей версии.
+1. If the app shows a new version notification, confirm the update.
+2. If automatic update is unavailable, download the latest APK manually from `Releases`.
+3. Install the new APK over the previous version.
 
-## Важно
+## Important
 
-- Этот репозиторий используется только для публикации релизов.
-- Исходный код хранится в приватном репозитории.
-- Все новые версии выкладываются во вкладке `Releases`.
+- This repository is used only for release distribution.
+- The source code is stored in a private repository.
+- All new versions are published in the `Releases` section.
 
-## Что находится в релизах
+## Files Included in Releases
 
-- `AlterEditingMethod-Mobile-*.apk` - установочный файл Android
-- `latest-android.json` - файл, который используется системой автообновления
+- `AlterEditingMethod-Mobile-*.apk` - Android installation package
+- `latest-android.json` - metadata file used by the auto-update system
 
-## Коротко
+## In Short
 
-Если нужна последняя версия приложения, просто откройте `Releases` и скачайте самый новый APK.
+If you need the latest version of the app, open `Releases` and download the newest APK.
